@@ -1,0 +1,14 @@
+name,start,end,color
+Literature,1896,2000,lightblue
+Vaudeville,1898,1933,#D77,
+Theater,1898,2000,#D77
+Radical,1899,1953,#07E
+
+from,start,to,end,color
+Vaudeville,1933,Theater
+Radical,1903,Literature,1907
+Literature,1919,Theater,
+
+stream,time,text,type,format,size
+Literature,1907,Mother Earth,outer
+Theater,1924,Cherry Lane Theater,inner

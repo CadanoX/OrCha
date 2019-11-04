@@ -2,7 +2,7 @@
 
 # Orcha
 
-Recreate Art
+Recreate Art by Ward Shelley
 
 # License
 

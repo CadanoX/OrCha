@@ -1,43 +1,74 @@
 import '../css/style.css';
-import * as d3 from 'd3';
+
+import Papa from 'papaparse';
 import ace from 'ace-builds';
 import 'ace-builds/webpack-resolver';
-import {
-  SplitStream,
-  SplitStreamFilter,
-  SplitStreamInputData,
-  TransformData
-} from '../libs/SplitStreams.js';
-import transform from './transformData';
+import OrCha from './OrCha';
 
-var editor;
-var stream;
+var editors = {};
+var orcha;
+var data = {
+  streams: [],
+  links: [],
+  tags: []
+};
+
+const example = {
+  streams: `name,start,end,color,parentStart,parentEnd
+Literature,1,10,lightblue
+Vaudeville,1,6,#D77,
+Theater,1,10,#D77`,
+  links: `from,start,to,end,color
+Vaudeville,6,Theater,6,blue`,
+  tags: `stream,time,text,type,format,size
+Literature,1907,Mother Earth,outer
+Theater,1924,Cherry Lane Theater,inner`
+};
 
 document.addEventListener('DOMContentLoaded', async function(event) {
-  stream = new SplitStream(document.querySelector('#stream'), {
-    mirror: true,
-    yPadding: 1
-  });
-  setupEditor();
+  orcha = new OrCha(document.querySelector('#chart'));
+  setupEditors();
 });
 
-function setupEditor() {
-  editor = ace.edit('editor');
-  editor.setTheme('ace/theme/monokai');
-  editor.session.setMode('ace/mode/javascript');
-  editor.on('change', onInputChanged);
-  // init
-  setStreamData(editor.getValue());
-}
+function setupEditors() {
+  for (let name of ['streams', 'links', 'tags']) {
+    let div = document.querySelector('#editor-' + name);
+    let storedData = retreiveData(name);
+    div.innerHTML = storedData && storedData != '' ? storedData : example[name];
 
-function onInputChanged() {
-  let data = editor.getValue();
-  setStreamData(data);
-}
-
-function setStreamData(data) {
-  let dataTransformed = transform(data);
-  if (dataTransformed) {
-    stream.data(dataTransformed);
+    editors[name] = ace.edit('editor-' + name);
+    editors[name].setTheme('ace/theme/monokai');
+    editors[name].session.setMode('ace/mode/javascript');
+    editors[name].on('change', () => onDataChanged(name));
+    onDataChanged(name);
   }
+
+  // init
+}
+
+function onDataChanged(name) {
+  let content = editors[name].getValue();
+  let parsed = parseCSV(content);
+  if (parsed) {
+    storeData(name, content);
+    data[name] = parsed;
+    orcha.data(data);
+  }
+}
+
+function parseCSV(data) {
+  try {
+    return Papa.parse(data, { header: true }).data;
+  } catch (e) {
+    alert(e);
+    return false;
+  }
+}
+
+function storeData(name, data) {
+  localStorage[name] = data;
+}
+
+function retreiveData(name) {
+  return localStorage[name];
 }

@@ -19,13 +19,18 @@ body {
   flex-direction: row;
 }
 
-#editor {
-  width: 50%;
-  height: 100%;
+#editors {
   float: left;
+  width: 35%;
+  height: 100%;
 }
-#stream {
-  width: 50%;
+#editor-streams,
+#editor-links,
+#editor-tags {
+  height: 33%;
+}
+#chart {
+  width: 65%;
   height: 100%;
 }
 
