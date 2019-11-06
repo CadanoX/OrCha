@@ -1,14 +1,24 @@
-name,start,end,color
-Literature,1896,2000,lightblue
-Vaudeville,1898,1933,#D77,
-Theater,1898,2000,#D77
-Radical,1899,1953,#07E
+name,start,end,color,values
+Literature,1896,2000,lightblue,1896/20-1900/20-1904/12
+JohnReed,1912,1915,blue,1912/2-1915/2
+Vaudeville,1898,1933,#D77,1998/8-1933/4
+Theater,1898,2000,#D77,1998/8-1910/8-1922/16-1935/8-1958/16-1970/10
+Dance,1899,2000,#A88,1899/6-1908/2-1933/2-1935/4-2000/4
+Radical,1899,1953,#07E,1899/10-1915/5-1953/2
 
-from,start,to,end,color
-Vaudeville,1933,Theater
+
+from,start,to,end,type
+Vaudeville,1933,Theater,,merge
 Radical,1903,Literature,1907
-Literature,1919,Theater,
+Literature,1923,tag5
+tag2,1914,tag3,,merge
+Literature,1911,JohnReed
 
 stream,time,text,type,format,size
-Literature,1907,Mother Earth,outer
+Literature,1898,(The Jewish) Forward,upper
+Literature,1907,Mother Earth,upper
+Literature,1913,The Glebe,upper
+Literature,1915,Other,upper
+Literature,1949,San Remo,lower
 Theater,1924,Cherry Lane Theater,inner
+JohnReed,1914,The Masses,outer

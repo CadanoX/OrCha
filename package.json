@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "ace-builds": "^1.4.7",
+    "color": "^3.1.2",
     "file-loader": "^4.2.0",
     "papaparse": "^5.1.0"
   }

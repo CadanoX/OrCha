@@ -4,6 +4,7 @@ import Papa from 'papaparse';
 import ace from 'ace-builds';
 import 'ace-builds/webpack-resolver';
 import OrCha from './OrCha';
+import { isNumeric } from './functions.js';
 
 var editors = {};
 var orcha;
@@ -14,12 +15,15 @@ var data = {
 };
 
 const example = {
-  streams: `name,start,end,color,parentStart,parentEnd
-Literature,1,10,lightblue
-Vaudeville,1,6,#D77,
-Theater,1,10,#D77`,
-  links: `from,start,to,end,color
-Vaudeville,6,Theater,6,blue`,
+  streams: `name,start,end,color,values
+Literature,1896,2000,lightblue,{1896:20,1903:12}
+Vaudeville,1898,1933,#D77,
+Theater,1898,2000,#D77
+Radical,1899,1953,#07E`,
+  links: `from,start,to,end,merge
+Vaudeville,1933,Theater
+Radical,1903,Literature,1907
+Literature,1919,Theater,`,
   tags: `stream,time,text,type,format,size
 Literature,1907,Mother Earth,outer
 Theater,1924,Cherry Lane Theater,inner`
@@ -49,6 +53,7 @@ function setupEditors() {
 function onDataChanged(name) {
   let content = editors[name].getValue();
   let parsed = parseCSV(content);
+  for (let line of parsed) line.values = parseValues(line.values);
   if (parsed) {
     storeData(name, content);
     data[name] = parsed;
@@ -58,11 +63,28 @@ function onDataChanged(name) {
 
 function parseCSV(data) {
   try {
-    return Papa.parse(data, { header: true }).data;
+    return Papa.parse(data, {
+      header: true,
+      skipEmptyLines: true
+    }).data;
   } catch (e) {
-    alert(e);
     return false;
   }
+}
+
+function parseValues(data) {
+  if (!data) return undefined;
+  let newData = {};
+  let entries = data.split('-');
+  for (let entryString of entries) {
+    let entry = entryString.split('/');
+    let time = entry[0];
+    let value = entry[1];
+    if (!isNumeric(time) || !isNumeric(value)) continue;
+    newData[time] = value;
+  }
+  if (Object.keys(newData).length === 0) return undefined;
+  return newData;
 }
 
 function storeData(name, data) {
