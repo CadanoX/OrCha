@@ -29,9 +29,13 @@ body {
 #editor-tags {
   height: 33%;
 }
-#chart {
+#charts {
   width: 65%;
   height: 100%;
+}
+#chart,
+#graph {
+  height: 50%;
 }
 
 .stream.active {

@@ -28,11 +28,13 @@ export default class OrCha {
   }
 
   data(d) {
-    return d == null ? this._data : (this._setData(d), this);
+    return d == null ? this._format : (this._setData(d), this);
   }
 
   _setData(d) {
-    this._format = new SplitStreamInputData();
+    this._format = new SplitStreamInputData({
+      order: null
+    });
     let innerTags = [];
     let streamTags = {}; // find correlated streams for outer tags
     let streamColors = {};
@@ -104,13 +106,13 @@ export default class OrCha {
     if (!isNumeric(link.start)) return;
     if (!isNumeric(link.end)) link.end = link.start;
     if (link.start > link.end) return;
-    link.name = link.from + '-' + link.to;
+    link.name = link.from + link.to;
     // stream moves fluently into the other stream
     if (link.type == 'merge') {
       this._format.addNext(link.end, link.from, link.to);
     } else {
       // stream attaches to the other stream
-      let linkEnd = link.name + '-end';
+      let linkEnd = link.name + 'port';
       this._format.addNode(+link.end + 1, linkEnd);
       this._format.addParent(+link.end + 1, linkEnd, link.to);
       this._format.addNext(link.end, link.from, linkEnd);

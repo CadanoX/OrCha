@@ -3,11 +3,14 @@ import '../css/style.css';
 import Papa from 'papaparse';
 import ace from 'ace-builds';
 import 'ace-builds/webpack-resolver';
+import myCyto from './MyCyto';
+// import MyGraph from './Graph';
 import OrCha from './OrCha';
-import { isNumeric } from './functions.js';
+import { isNumeric, randomize } from './functions.js';
 
 var editors = {};
 var orcha;
+var graph;
 var data = {
   streams: [],
   links: [],
@@ -31,8 +34,22 @@ Theater,1924,Cherry Lane Theater,inner`
 
 document.addEventListener('DOMContentLoaded', async function(event) {
   orcha = new OrCha(document.querySelector('#chart'));
+  graph = new myCyto(document.querySelector('#graph'), onGraphUpdated);
+  // let myGraph = new MyGraph();
   setupEditors();
 });
+
+function onGraphUpdated(data) {
+  // let streamData = orcha.data();
+  // for (let node of data.elements.nodes) {
+  //   let { y, name, time, height } = { ...node.position, ...node.data };
+  //   streamData._timesteps[time].references[name].dataPos = y;
+  //   if (streamData._timesteps[time].tree.dataSize < y)
+  //     streamData._timesteps[time].tree.dataSize = y;
+  // }
+  // streamData.finalize();
+  // orcha._stream.data(streamData);
+}
 
 function setupEditors() {
   for (let name of ['streams', 'links', 'tags']) {
@@ -50,14 +67,19 @@ function setupEditors() {
   // init
 }
 
-function onDataChanged(name) {
-  let content = editors[name].getValue();
+function onDataChanged(type) {
+  let content = editors[type].getValue();
   let parsed = parseCSV(content);
   for (let line of parsed) line.values = parseValues(line.values);
   if (parsed) {
-    storeData(name, content);
-    data[name] = parsed;
+    storeData(type, content);
+    data[type] = parsed;
     orcha.data(data);
+    let streamData = orcha.data();
+    // console.log(streamToDot(streamData));
+    let graphData = streamToGraph(streamData);
+    graph.data(graphData);
+    // console.log(graphToDot(graphData));
   }
 }
 
@@ -93,4 +115,109 @@ function storeData(name, data) {
 
 function retreiveData(name) {
   return localStorage[name];
+}
+
+function streamToGraph(data) {
+  let nodes = [];
+  let edges = [];
+  for (let i in data._timesteps) {
+    let t = data._timesteps[i];
+    for (let id in t.references) {
+      let node = t.references[id];
+      if (node.id == 'fakeRoot') continue;
+      let parent =
+        node.parent && node.parent.id != 'fakeRoot'
+          ? node.parent.id + i
+          : undefined;
+      // dagre does not support clusters, so we need to
+      // let movePortsInRank (node.id.endsWith('port'))
+      nodes.push({
+        data: {
+          id: node.id + i,
+          name: node.id,
+          time: i,
+          parent,
+          rank: +i,
+          // height: node.dataSize * 2,
+          height: 50,
+          width: (node.id + i).split('').length * 10,
+          color: node.data ? node.data.color : 'orange'
+        },
+        position: { x: (i - 1890) * 20, y: 300 }
+      });
+      // this is the alternative to using hierarchies
+      // if (parent && parent != 'fakeRoot' + i)
+      //   edges.push({
+      //     data: {
+      //       id: parent + node.id + i,
+      //       source: parent,
+      //       target: node.id + i
+      //     }
+      //   });
+      if (node.prev) {
+        for (let prev of node.prev) {
+          edges.push({
+            data: {
+              id: prev.id + (i - 1) + node.id + i,
+              source: prev.id + (i - 1),
+              target: node.id + i
+            }
+          });
+        }
+      }
+    }
+  }
+  randomize(nodes);
+  return { elements: { nodes, edges } };
+}
+
+function graphToStream(graph) {}
+
+function streamToDot(data) {
+  let string = 'digraph G {\n';
+  for (let i in data._timesteps) {
+    let t = data._timesteps[i];
+
+    // group nodes of timestep in subgraphs to limit them in x-direction
+    /*string += 'subgraph {rank=same;';
+    for (let id in t.references) {
+      if (id == 'fakeRoot') continue;
+      string += id + i + ';';
+    }
+    string += '}\n';*/
+    string += '{node [rank=' + i + '];';
+    for (let id in t.references) {
+      if (id == 'fakeRoot') continue;
+      string += id + i + ' ';
+    }
+    string += '}\n';
+
+    // add node properties and edges
+    for (let id in t.references) {
+      let node = t.references[id];
+      if (node.id == 'fakeRoot') continue;
+      let parent = node.parent ? node.parent.id + i : undefined;
+      //       string += `${node.id + i} [width=${node.size}]
+      // `;
+      // this is the alternative to using hierarchies
+      //       if (parent && parent != 'fakeRoot' + i)
+      //         string += `${parent + (i - 1)}->${node.id + i}
+      // `;
+      if (node.prev) {
+        for (let prev of node.prev) {
+          string += `${prev.id + (i - 1)}->${node.id + i}
+`;
+        }
+      }
+    }
+  }
+  return string + '}';
+}
+
+function graphToDot(data) {
+  let string = 'digraph G {\n';
+  for (let edge of data.elements.edges) {
+    string += edge.data.source + '->' + edge.data.target + '\n';
+  }
+  return string + '}';
 }
