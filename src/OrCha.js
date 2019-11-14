@@ -7,10 +7,12 @@ import {
   SplitStreamInputData,
   TransformData
 } from '../libs/SplitStreams.js';
+import MyForce from './MyForce';
 import { interpolateOranges } from 'd3-scale-chromatic';
 
 export default class OrCha {
-  constructor(container) {
+  constructor(container, callback) {
+    this._callback = callback;
     this._stream = new SplitStream(container, {
       mirror: true,
       offset: 'zero',
@@ -19,6 +21,11 @@ export default class OrCha {
     });
     this._stream.proportion = 1;
     this._format;
+    this._graphData;
+    this._graphLayout = new MyForce({
+      callbackTick: this._onForceUpdate.bind(this),
+      range: [undefined, container.height] // TODO: THESE VALUES ARE TAKEN FROM THE WRONG CONTAINER
+    });
 
     this._streamSize = 10;
   }
@@ -31,9 +38,25 @@ export default class OrCha {
     return d == null ? this._format : (this._setData(d), this);
   }
 
+  get graphData() {
+    return this._graphData;
+  }
+
   _setData(d) {
+    this._inputToStream(d);
+    this._stream.data(this._format);
+    this._graphData = this._streamDataToGraph(this._format);
+    this._graphLayout.data(this._graphData);
+    this._graphLayout.run(100);
+  }
+
+  _inputToStream(d) {
     this._format = new SplitStreamInputData({
       order: null
+      // order: {
+      //   name: 'minimizeEdgeCrossings',
+      //   options: { iterations: 100 }
+      // }
     });
     let innerTags = [];
     let streamTags = {}; // find correlated streams for outer tags
@@ -83,7 +106,58 @@ export default class OrCha {
 
     this._format.connectEqualIds();
     this._format.finalize();
-    this._stream.data(this._format);
+  }
+
+  _streamDataToGraph(data) {
+    let nodes = [];
+    let links = [];
+    for (let i in data._timesteps) {
+      let t = data._timesteps[i];
+      for (let id in t.references) {
+        let node = t.references[id];
+        if (node.id == 'fakeRoot') continue;
+        let parent =
+          node.parent && node.parent.id != 'fakeRoot'
+            ? node.parent.id + i
+            : undefined;
+        // dagre does not support clusters, so we need to
+        // let movePortsInRank (node.id.endsWith('port'))
+        nodes.push({
+          id: node.id + i,
+          name: node.id,
+          time: i,
+          pos: node.pos * 1,
+          parent,
+          depth: node.depth,
+          height: node.size * 5,
+          // height: 50,
+          width: (node.id + i).split('').length * 10,
+          color: node.data ? node.data.color : 'orange',
+          x: (i - 1890) * 20,
+          y: 300
+        });
+        // this is the alternative to using hierarchies
+        // if (parent && parent != 'fakeRoot' + i)
+        //   links.push({
+        //     data: {
+        //       id: parent + node.id + i,
+        //       source: parent,
+        //       target: node.id + i
+        //     }
+        //   });
+        if (node.prev) {
+          for (let prev of node.prev) {
+            links.push({
+              id: prev.id + (i - 1) + node.id + i,
+              source: prev.id + (i - 1),
+              target: node.id + i
+            });
+          }
+        }
+      }
+    }
+    // randomize(nodes);
+    return { nodes, links };
   }
 
   _addStream(stream) {
@@ -162,6 +236,10 @@ export default class OrCha {
     let smallerValue = +stream.values[smaller] || this._streamSize;
     let biggerValue = +stream.values[bigger] || this._streamSize;
     return smallerValue + prop * (biggerValue - smallerValue);
+  }
+
+  _onForceUpdate() {
+    this._callback();
   }
 
   __getDarkerColor(color) {

@@ -6,11 +6,13 @@ import 'ace-builds/webpack-resolver';
 import myCyto from './MyCyto';
 // import MyGraph from './Graph';
 import OrCha from './OrCha';
-import { isNumeric, randomize } from './functions.js';
+import { isNumeric, randomize, d3ToCyto } from './functions.js';
+import myGraph from './Graph';
 
 var editors = {};
 var orcha;
-var graph;
+// var cyto;
+var d3graph;
 var data = {
   streams: [],
   links: [],
@@ -33,9 +35,9 @@ Theater,1924,Cherry Lane Theater,inner`
 };
 
 document.addEventListener('DOMContentLoaded', async function(event) {
-  orcha = new OrCha(document.querySelector('#chart'));
-  graph = new myCyto(document.querySelector('#graph'), onGraphUpdated);
-  // let myGraph = new MyGraph();
+  orcha = new OrCha(document.querySelector('#chart'), onGraphUpdated);
+  // cyto = new myCyto(document.querySelector('#graph'), onGraphUpdated);
+  d3graph = new myGraph(document.querySelector('#d3graph'));
   setupEditors();
 });
 
@@ -49,6 +51,8 @@ function onGraphUpdated(data) {
   // }
   // streamData.finalize();
   // orcha._stream.data(streamData);
+
+  d3graph.data(orcha.graphData);
 }
 
 function setupEditors() {
@@ -75,10 +79,7 @@ function onDataChanged(type) {
     storeData(type, content);
     data[type] = parsed;
     orcha.data(data);
-    let streamData = orcha.data();
-    // console.log(streamToDot(streamData));
-    let graphData = streamToGraph(streamData);
-    graph.data(graphData);
+    // cyto.data(orcha.graphData());
     // console.log(graphToDot(graphData));
   }
 }
@@ -116,62 +117,6 @@ function storeData(name, data) {
 function retreiveData(name) {
   return localStorage[name];
 }
-
-function streamToGraph(data) {
-  let nodes = [];
-  let edges = [];
-  for (let i in data._timesteps) {
-    let t = data._timesteps[i];
-    for (let id in t.references) {
-      let node = t.references[id];
-      if (node.id == 'fakeRoot') continue;
-      let parent =
-        node.parent && node.parent.id != 'fakeRoot'
-          ? node.parent.id + i
-          : undefined;
-      // dagre does not support clusters, so we need to
-      // let movePortsInRank (node.id.endsWith('port'))
-      nodes.push({
-        data: {
-          id: node.id + i,
-          name: node.id,
-          time: i,
-          parent,
-          rank: +i,
-          // height: node.dataSize * 2,
-          height: 50,
-          width: (node.id + i).split('').length * 10,
-          color: node.data ? node.data.color : 'orange'
-        },
-        position: { x: (i - 1890) * 20, y: 300 }
-      });
-      // this is the alternative to using hierarchies
-      // if (parent && parent != 'fakeRoot' + i)
-      //   edges.push({
-      //     data: {
-      //       id: parent + node.id + i,
-      //       source: parent,
-      //       target: node.id + i
-      //     }
-      //   });
-      if (node.prev) {
-        for (let prev of node.prev) {
-          edges.push({
-            data: {
-              id: prev.id + (i - 1) + node.id + i,
-              source: prev.id + (i - 1),
-              target: node.id + i
-            }
-          });
-        }
-      }
-    }
-  }
-  randomize(nodes);
-  return { elements: { nodes, edges } };
-}
-
-function graphToStream(graph) {}
 
 function streamToDot(data) {
   let string = 'digraph G {\n';

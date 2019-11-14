@@ -34,8 +34,13 @@ body {
   height: 100%;
 }
 #chart,
-#graph {
+#graph,
+#d3graph {
   height: 50%;
+}
+
+#graph {
+  display: none;
 }
 
 .stream.active {

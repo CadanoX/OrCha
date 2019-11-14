@@ -3,14 +3,12 @@ import cytoDagre from 'cytoscape-dagre';
 import klay from 'cytoscape-klay';
 import ELK from 'elkjs';
 import dagre from 'dagre';
-import * as d3 from 'd3';
 cytoscape.use(cytoDagre);
 cytoscape.use(klay);
 
 export default class MyCyto {
-  constructor(container, callback) {
-    this._callback = callback;
-    this._layoutName = 'dagre';
+  constructor(container) {
+    this._layoutName = 'myForce';
     this._graphNodes;
     this._elk = new ELK({
       algorithms: ['mrtree', 'dot', 'layered']
@@ -52,9 +50,10 @@ export default class MyCyto {
           selector: 'node',
           style: {
             backgroundColor: 'data(color)', //'rgb(221, 119, 119)',
-            label: 'data(id)'
+            label: 'data(id)',
             // width: 'label',
-            // height: 'data(size)'
+            height: 'data(size)',
+            shape: 'rectangle'
           }
         },
         // compunt nodes
@@ -90,13 +89,12 @@ export default class MyCyto {
     else if (this._layoutName == 'dagre') {
       data = this._runDagre(data);
       this.updateGraph(data);
-    } else if (this._layoutName == 'myForce') this._runMyForce(data);
+    } else if (this._layoutName == 'myForce') this.updateGraph(data);
   }
 
   updateGraph(data) {
     this._graph.json(data);
     this._graph.layout(this._layout).run();
-    this._callback(data);
   }
 
   _runElk(data) {
@@ -224,81 +222,8 @@ export default class MyCyto {
   }
 
   _runMyForce(data) {
-    data = this.__cytoToD3(data);
-    // fix nodes in x direction
-    data.nodes.forEach(d => {
-      d.fx = +d.rank * 100;
-    });
-    let sim = d3.forceSimulation();
-    sim.velocityDecay(0.01); // default 0.4
-    sim.alphaDecay(0.05); // default 0.028
-    sim.nodes(data.nodes);
-    // keep inside window
-    sim.force('y', d3.forceY(5000 / 2).strength(0.05));
-    //apply link force
-    sim.force(
-      'link',
-      d3
-        .forceLink(data.links)
-        .id(d => d.id)
-        .strength(d => {
-          let sourceTag = d.source.id.split('1')[0];
-          if (d.target.id.startsWith(sourceTag)) return 1;
-          else return 1;
-        })
-    );
-    // sim.force('charge', d3.forceManyBody().strength(-5));
-    sim.force('collide', d3.forceCollide().radius(d => 20));
-
-    // force nodes back into their parent elements
-    sim.on('tick', () => {
-      // for (let i = 0; i < data.nodes.length; i++) {
-      //   let node = data.nodes[i];
-      // }
-
-      // for (let i = 0; i < data.links.length; i++) {
-      //   let link = data.links[i];
-      //   link.x1 = link.source.x;
-      //   link.x2 = link.target.x;
-      // }
-      this.updateGraph(this.__d3ToCyto(data));
-    });
-    sim.on('end', () => this.updateGraph(this.__d3ToCyto(data)));
-  }
-
-  __cytoToD3(data) {
-    let nodes = data.elements.nodes.map(d => d.data);
-    let links = data.elements.edges.map(d => d.data);
-    return { nodes, links };
-  }
-
-  __d3ToCyto(data) {
-    let nodes = [];
-    let edges = [];
-
-    for (let node of data.nodes) {
-      nodes.push({
-        data: {
-          id: node.id,
-          width: node.width,
-          height: node.height,
-          color: node.color,
-          name: node.name,
-          time: node.time
-        },
-        position: { x: node.x, y: node.y }
-      });
-    }
-
-    for (let link of data.links) {
-      edges.push({
-        data: {
-          id: link.source.id + link.target.id,
-          source: link.source.id,
-          target: link.target.id
-        }
-      });
-    }
-    return { elements: { nodes, edges } };
+    let d3data = this.__cytoToD3(data);
+    this._myForce.data(d3data);
+    this._myForce.run();
   }
 }
