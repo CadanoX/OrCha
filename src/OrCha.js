@@ -18,7 +18,17 @@ export default class OrCha {
       mirror: true,
       offset: 'zero',
       transparentRoot: true,
-      yPadding: 1
+      yPadding: 1,
+      axes: [
+        {
+          position: 'bottom',
+          ticks: 10,
+          size: 30,
+          tickSize: 'full',
+          labelPos: [20, -15],
+          labelSize: '2em'
+        }
+      ]
     });
     this._stream.proportion = 1;
     this._streamData;
@@ -50,6 +60,18 @@ export default class OrCha {
     this._graphData = this._streamDataToGraph(this._streamData);
     this._graphLayout.data(this._graphData);
     this._graphLayout.run(100);
+
+    this._makeFancyTimeline();
+  }
+
+  _makeFancyTimeline() {
+    this._stream._axesContainer
+      .selectAll('.tick line')
+      .nodes()
+      .forEach(d => {
+        let tick = d3.select(d);
+        let test;
+      });
   }
 
   _inputToStream(d) {
@@ -131,7 +153,7 @@ export default class OrCha {
           pos: node.pos * 1,
           parent,
           depth: node.depth,
-          height: node.size * 5,
+          height: node.size,
           // height: 50,
           width: (node.id + i).split('').length * 10,
           color: node.data ? node.data.color : 'orange',
