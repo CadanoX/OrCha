@@ -8,24 +8,26 @@ import {
   TransformData
 } from '../libs/SplitStreams.js';
 import MyForce from './MyForce';
+import MyGraph from './Graph';
 import { interpolateOranges } from 'd3-scale-chromatic';
 
 export default class OrCha {
-  constructor(container, callback) {
+  constructor(streamContainer, graphContainer, callback) {
     this._callback = callback;
-    this._stream = new SplitStream(container, {
+    this._stream = new SplitStream(streamContainer, {
       mirror: true,
       offset: 'zero',
       transparentRoot: true,
       yPadding: 1
     });
     this._stream.proportion = 1;
-    this._format;
+    this._streamData;
     this._graphData;
     this._graphLayout = new MyForce({
       callbackTick: this._onForceUpdate.bind(this),
-      range: [undefined, container.height] // TODO: THESE VALUES ARE TAKEN FROM THE WRONG CONTAINER
+      range: [undefined, graphContainer.clientHeight]
     });
+    this._graph = new MyGraph(graphContainer);
 
     this._streamSize = 10;
   }
@@ -35,7 +37,7 @@ export default class OrCha {
   }
 
   data(d) {
-    return d == null ? this._format : (this._setData(d), this);
+    return d == null ? this._streamData : (this._setData(d), this);
   }
 
   get graphData() {
@@ -44,14 +46,14 @@ export default class OrCha {
 
   _setData(d) {
     this._inputToStream(d);
-    this._stream.data(this._format);
-    this._graphData = this._streamDataToGraph(this._format);
+    this._stream.data(this._streamData);
+    this._graphData = this._streamDataToGraph(this._streamData);
     this._graphLayout.data(this._graphData);
     this._graphLayout.run(100);
   }
 
   _inputToStream(d) {
-    this._format = new SplitStreamInputData({
+    this._streamData = new SplitStreamInputData({
       order: null
       // order: {
       //   name: 'minimizeEdgeCrossings',
@@ -104,8 +106,8 @@ export default class OrCha {
 
     for (let link of d.links) this._addLinks(link);
 
-    this._format.connectEqualIds();
-    this._format.finalize();
+    this._streamData.connectEqualIds();
+    this._streamData.finalize();
   }
 
   _streamDataToGraph(data) {
@@ -164,15 +166,15 @@ export default class OrCha {
     if (stream.start > stream.end) return;
 
     for (let t = stream.start; t <= stream.end; t++) {
-      this._format.addNode(t, stream.name, this._getSize(stream, t), null, {
+      this._streamData.addNode(t, stream.name, this._getSize(stream, t), null, {
         color: stream.color
       });
     }
     if (stream.parentStart) {
-      this._format.addNext(stream.start, stream.parentStart, stream.name);
+      this._streamData.addNext(stream.start, stream.parentStart, stream.name);
     }
     if (stream.parentEnd) {
-      this._format.addNext(stream.end, stream.name, stream.parentEnd);
+      this._streamData.addNext(stream.end, stream.name, stream.parentEnd);
     }
   }
 
@@ -183,13 +185,13 @@ export default class OrCha {
     link.name = link.from + link.to;
     // stream moves fluently into the other stream
     if (link.type == 'merge') {
-      this._format.addNext(link.end, link.from, link.to);
+      this._streamData.addNext(link.end, link.from, link.to);
     } else {
       // stream attaches to the other stream
       let linkEnd = link.name + 'port';
-      this._format.addNode(+link.end + 1, linkEnd);
-      this._format.addParent(+link.end + 1, linkEnd, link.to);
-      this._format.addNext(link.end, link.from, linkEnd);
+      this._streamData.addNode(+link.end + 1, linkEnd);
+      this._streamData.addParent(+link.end + 1, linkEnd, link.to);
+      this._streamData.addNext(link.end, link.from, linkEnd);
     }
     // if (link.end - link.start == 0) {
     // } else {
@@ -204,16 +206,17 @@ export default class OrCha {
   _addTagNode(tag) {
     let tagLengthHalf = 2;
     for (let t = tag.time - tagLengthHalf; t < +tag.time + tagLengthHalf; t++) {
-      this._format.addNode(t, tag.name, null, null, {
+      this._streamData.addNode(t, tag.name, null, null, {
         label: tag.text,
         color: tag.color
       });
-      if (tag.type == 'inner') this._format.addParent(t, tag.name, tag.stream);
+      if (tag.type == 'inner')
+        this._streamData.addParent(t, tag.name, tag.stream);
     }
   }
 
   _addTagLink(tag) {
-    this._format.addNext(tag.time - 1, tag.stream, tag.name);
+    this._streamData.addNext(tag.time - 1, tag.stream, tag.name);
   }
 
   // expect stream values to be sorted
@@ -239,6 +242,16 @@ export default class OrCha {
   }
 
   _onForceUpdate() {
+    this._graph.data(this._graphData);
+    for (let node of this._graphData.nodes) {
+      this._streamData._timesteps[node.time].references[node.name].dataPos =
+        node.y;
+      if (this._streamData._timesteps[node.time].tree.dataSize < node.y)
+        this._streamData._timesteps[node.time].tree.dataSize = node.y;
+    }
+    this._streamData.finalize();
+    this._stream.data(this._streamData);
+
     this._callback();
   }
 

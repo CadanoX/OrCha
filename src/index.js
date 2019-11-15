@@ -3,16 +3,13 @@ import '../css/style.css';
 import Papa from 'papaparse';
 import ace from 'ace-builds';
 import 'ace-builds/webpack-resolver';
-import myCyto from './MyCyto';
-// import MyGraph from './Graph';
+// import myCyto from './MyCyto';
 import OrCha from './OrCha';
 import { isNumeric, randomize, d3ToCyto } from './functions.js';
-import myGraph from './Graph';
 
 var editors = {};
 var orcha;
 // var cyto;
-var d3graph;
 var data = {
   streams: [],
   links: [],
@@ -35,25 +32,16 @@ Theater,1924,Cherry Lane Theater,inner`
 };
 
 document.addEventListener('DOMContentLoaded', async function(event) {
-  orcha = new OrCha(document.querySelector('#chart'), onGraphUpdated);
+  orcha = new OrCha(
+    document.querySelector('#chart'),
+    document.querySelector('#d3graph'),
+    onGraphUpdated
+  );
   // cyto = new myCyto(document.querySelector('#graph'), onGraphUpdated);
-  d3graph = new myGraph(document.querySelector('#d3graph'));
   setupEditors();
 });
 
-function onGraphUpdated(data) {
-  // let streamData = orcha.data();
-  // for (let node of data.elements.nodes) {
-  //   let { y, name, time, height } = { ...node.position, ...node.data };
-  //   streamData._timesteps[time].references[name].dataPos = y;
-  //   if (streamData._timesteps[time].tree.dataSize < y)
-  //     streamData._timesteps[time].tree.dataSize = y;
-  // }
-  // streamData.finalize();
-  // orcha._stream.data(streamData);
-
-  d3graph.data(orcha.graphData);
-}
+function onGraphUpdated(data) {}
 
 function setupEditors() {
   for (let name of ['streams', 'links', 'tags']) {
