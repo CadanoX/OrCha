@@ -13,7 +13,7 @@ export default class MyForce {
     this._sim = d3.forceSimulation();
     // this._sim.stop();
     // this._sim.alpha(0);
-    this._sim.velocityDecay(0.05); // default 0.4
+    this._sim.velocityDecay(0.1); // default 0.4
     this._sim.alphaDecay(1); // default 0.028
     this._sim.on('tick', () => this._tick());
     if (this._opts.callbackEnd) this._sim.on('end', this._opts.callbackEnd);
@@ -23,22 +23,41 @@ export default class MyForce {
     return d == null ? this._data : (this._setData(d), this);
   }
 
+  set velocityDecay(value) {
+    this._sim.velocityDecay(value);
+  }
+  set alphaDecay(value) {
+    this._sim.alphaDecay(value);
+  }
+  set forceY(value) {
+    this._sim.force('forceY').strength(value);
+  }
+  set forceLink(value) {
+    this._sim.force('forceLink').strength(value);
+  }
+  set forceBody(value) {
+    this._sim.force('forceBody').strength(value);
+  }
+  set forceCollision(value) {
+    this._sim.force('forceCollision').strength(value);
+  }
+
   _setData(data) {
     // preprocess
     data.nodes.forEach(d => {
       // fix nodes in x direction
       d.fx = +d.time * 100;
-      d.fy = d.pos;
+      // d.fy = d.pos;
     });
     //set
     this._data = data;
     this._sim.nodes(this._data.nodes);
     this._sim.force(
       'forceY',
-      d3.forceY(this._opts.range[1] / 2).strength(0.05)
+      d3.forceY(this._opts.range[1] / 2).strength(0.01)
     );
     this._sim.force(
-      'link',
+      'forceLink',
       d3
         .forceLink(data.links)
         .id(d => d.id)
@@ -46,16 +65,15 @@ export default class MyForce {
           let sourceTag = d.source.id.split('1')[0];
           if (d.target.id.startsWith(sourceTag)) return 1;
           else return 1;
-          return 0;
         })
     );
-    this._sim.force('charge', d3.forceManyBody().strength(-4));
+    this._sim.force('forceBody', d3.forceManyBody().strength(-10));
     this._sim.force(
-      'collide',
+      'forceCollision',
       d3
         .forceCollide()
         .radius(d => d.height)
-        .strength(0.2) // default 0.7
+        .strength(0) // default 0.7
     );
   }
 
@@ -76,7 +94,7 @@ export default class MyForce {
   }
 
   run(ticks = 0) {
-    // if (ticks > 0) this._sim.tick(ticks);
-    // else this._sim.restart();
+    if (ticks > 0) this._sim.tick(ticks);
+    else this._sim.alpha(1).restart();
   }
 }

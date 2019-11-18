@@ -17,6 +17,7 @@ var data = {
   tags: []
 };
 var popupTag;
+var popupStream;
 var currentTag = {};
 var currentDrag = {};
 var dragTimeStart;
@@ -44,9 +45,41 @@ document.addEventListener('DOMContentLoaded', async function(event) {
   );
   // cyto = new myCyto(document.querySelector('#graph'), onGraphUpdated);
   setupEditors();
-
-  popupTag = document.querySelector('#popupTag');
+  setupPopups();
+  setupOptions();
 });
+
+function setupPopups() {
+  // add tags and streams on keypress enter
+  popupTag = document.querySelector('#popupTag');
+  popupTag.querySelector('input').addEventListener('keyup', e => {
+    if (e.keyCode === 13)
+      popupTag.querySelector('button[type="submit"]').click();
+  });
+  popupStream = document.querySelector('#popupStream');
+  popupStream.querySelector('input').addEventListener('keyup', e => {
+    if (e.keyCode === 13)
+      popupStream.querySelector('button[type="submit"]').click();
+  });
+}
+
+function setupOptions() {
+  let options = document.querySelectorAll('#options > *');
+  for (let option of options) {
+    option.querySelector('input').oninput = () => forceParameterChanged(option);
+    option.querySelector('input').onchange = () => {
+      let text = option.querySelector('.value');
+      text.innerText = option.querySelector('input').value;
+    };
+  }
+}
+
+function forceParameterChanged(option) {
+  let valueText = option.querySelector('.value');
+  let value = option.querySelector('input').value;
+  valueText.innerText = value;
+  orcha.updateForce(option.dataset.name, value);
+}
 
 function onGraphReady(data) {
   activateInteractions();
@@ -56,43 +89,55 @@ function getYear(x) {
   return Math.round(orcha._stream._streamData.xScale.invert(x));
 }
 function activateInteractions() {
-  let con = orcha._stream._pathContainer;
+  let con = orcha._stream._zoomContainer;
   let streams = con.selectAll('path.stream');
 
   // add line to show current time
-  let el = orcha._stream._pathContainer
-    .append('g')
-    .classed('orientationLine', true);
+  let el = con.append('g').attr('id', 'orientationLine');
+  let el2 = con.append('g').attr('id', 'orientationLine2');
 
   el.append('line')
     .attr('y1', orcha._stream._streamData.yScale(0))
     .attr('y2', orcha._stream._streamData.yScale(1));
   el.append('text').attr('y', orcha._stream._streamData.yScale(0));
 
+  el2
+    .append('line')
+    .attr('y1', orcha._stream._streamData.yScale(0))
+    .attr('y2', orcha._stream._streamData.yScale(1));
+  el2.append('text').attr('y', orcha._stream._streamData.yScale(0));
+
   con.on('mousemove', function(d) {
-    let coords = d3.mouse(this);
-    let line = d3.select('.orientationLine');
-    line.attr('transform', d => 'translate(' + (coords[0] - 2) + ',0)');
-    line.select('text').text(getYear(coords[0]));
+    updateLine('orientationLine', d3.mouse(this));
   });
 
   // click on streams for tags
-  streams.on('click', function(d) {
-    console.log('clicked');
-    let coords = d3.mouse(this);
-    currentTag.time = getYear(coords[0]);
-    currentTag.stream = d.id;
-    showPopupTag();
-  });
+  streams
+    .filter(d => d.id != 'fakeRoot')
+    .on('click', function(d) {
+      console.log('clicked');
+      let coords = d3.mouse(this);
+      currentTag.time = getYear(coords[0]);
+      currentTag.stream = d.id;
+      showPopupTag();
+    });
 
   // drag on streams/tags for links
-  streams.call(
-    d3
-      .drag()
-      .on('start', onStreamDragStarted)
-      .on('drag', onStreamDragged)
-      .on('end', onStreamDragEnded)
-  );
+  streams
+    .filter(d => d.id != 'fakeRoot')
+    .call(
+      d3
+        .drag()
+        .on('start', onStreamDragStarted)
+        .on('drag', onStreamDragged)
+        .on('end', onStreamDragEnded)
+    );
+}
+
+function updateLine(id, coords) {
+  let line = d3.select('#' + id);
+  line.attr('transform', d => 'translate(' + (coords[0] + 2) + ',0)');
+  line.select('text').text(getYear(coords[0]));
 }
 
 function onStreamDragStarted(d) {
@@ -100,13 +145,16 @@ function onStreamDragStarted(d) {
   currentDrag.startName = d.id;
   currentDrag.startTime = getYear(coords[0]);
   dragTimeStart = Date.now();
-  orcha._stream._pathContainer
+  orcha._stream._zoomContainer
     .append('line')
     .classed('interactionLine', true)
     .attr('x1', coords[0])
     .attr('y1', coords[1])
     .attr('x2', coords[0])
     .attr('y2', coords[1]);
+
+  updateLine('orientationLine2', coords);
+  d3.select('#orientationLine2').style('visibility', 'visible');
 }
 
 function onStreamDragged(d) {
@@ -114,11 +162,15 @@ function onStreamDragged(d) {
   d3.select('.interactionLine')
     .attr('x2', coords[0])
     .attr('y2', coords[1]);
+
+  updateLine('orientationLine2', coords);
+  d3.select('#orientationLine2').style('visibility', 'hidden');
 }
 
 function onStreamDragEnded(d) {
   let dragTime = Date.now() - dragTimeStart;
   d3.select('.interactionLine').remove();
+  d3.select('#orientationLine2').visibility = 'hidden';
   // if drag is too fast, it is a click
   if (dragTime < 300) {
     currentDrag = {};
@@ -152,12 +204,8 @@ function handleDrag(drag) {
 
 function showPopupTag() {
   popupTag.style.visibility = 'visible';
+  popupTag.querySelector('input').focus();
 }
-
-function showPopupStream() {
-  popupStream.style.visibility = 'visible';
-}
-
 window.onTagNameCancel = () => {
   popupTag.style.visibility = 'hidden';
   popupTag.querySelector('input').value = '';
@@ -170,6 +218,11 @@ window.onTagNameOk = () => {
   popupTag.querySelector('input').value = '';
   currentTag = {};
 };
+
+function showPopupStream() {
+  popupStream.style.visibility = 'visible';
+  popupStream.querySelector('input').focus();
+}
 window.onStreamNameCancel = () => {
   popupStream.style.visibility = 'hidden';
   popupStream.querySelector('input').value = '';

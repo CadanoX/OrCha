@@ -29,8 +29,8 @@ export default class MyGraph {
   _setData(d) {
     d.nodes.forEach(d => {
       this._domainX[0] = Math.min(this._domainX[0], d.x);
-      this._domainY[0] = Math.min(this._domainY[0], d.y);
       this._domainX[1] = Math.max(this._domainX[1], d.x);
+      this._domainY[0] = Math.min(this._domainY[0], d.y);
       this._domainY[1] = Math.max(this._domainY[1], d.y + d.height);
     });
 
@@ -52,13 +52,12 @@ export default class MyGraph {
           enter
             .append('rect')
             .attr('width', 2.5)
-            .attr('height', d => d.height)
+            .attr('height', d => y(d.height))
             .attr('x', d => x(d.x))
             .attr('y', d => y(d.y))
             .attr('fill', d => d.color),
         update => update.attr('y', d => y(d.y)),
         exit => exit.remove()
-      )
-      .enter();
+      );
   }
 }

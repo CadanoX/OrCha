@@ -22,13 +22,14 @@ export default class OrCha {
       axes: [
         {
           position: 'bottom',
-          ticks: 10,
-          size: 30,
+          // ticks: 10,
           tickSize: 'full',
-          labelPos: [20, -15],
-          labelSize: '2em'
+          textPos: [0, 0],
+          textSize: '2em',
+          textAnchor: 'start'
         }
-      ]
+      ],
+      margin: { top: 40, bottom: 20, left: 20, right: 20 }
     });
     this._stream.proportion = 1;
     this._streamData;
@@ -55,14 +56,19 @@ export default class OrCha {
     return this._graphData;
   }
 
+  updateForce(parameter, value) {
+    this._graphLayout[parameter] = value;
+    this._graphLayout.run();
+  }
+
   _setData(d) {
     this._inputToStream(d);
     this._stream.data(this._streamData);
     this._graphData = this._streamDataToGraph(this._streamData);
     this._graphLayout.data(this._graphData);
-    this._graphLayout.run(100);
+    this._graphLayout.run();
 
-    // this._makeFancyTimeline();
+    this._makeFancyTimeline();
   }
 
   _makeFancyTimeline() {
@@ -76,8 +82,8 @@ export default class OrCha {
     let width = x2 - x1;
 
     axes
-      .selectAll('.tick')
-      .append('rect')
+      .selectAll('.tick:not(:last-child)')
+      .insert('rect', ':first-child')
       .attr('width', width)
       .attr('height', height)
       .classed('tickCenter', true)
@@ -85,8 +91,8 @@ export default class OrCha {
         return i % 2 ? false : true;
       });
     axes
-      .selectAll('.tick')
-      .append('rect')
+      .selectAll('.tick:not(:last-child)')
+      .insert('rect', ':nth-child(2)')
       .attr('width', width)
       .attr('height', 25)
       .classed('tickTop', true)
@@ -160,6 +166,7 @@ export default class OrCha {
   }
 
   _streamDataToGraph(data) {
+    let y = this._stream._streamData._yScale;
     let nodes = [];
     let links = [];
     for (let i in data._timesteps) {
@@ -173,11 +180,37 @@ export default class OrCha {
             : undefined;
         // dagre does not support clusters, so we need to
         // let movePortsInRank (node.id.endsWith('port'))
+
+        // const r = {
+        //   id: node.id + i,
+        //   name: node.id,
+        //   time: i,
+        //   pos: node.pos,
+        //   parent,
+        //   depth: node.depth,
+        //   height: node.size,
+        //   // height: 50,
+        //   width: (node.id + i).split('').length * 10,
+        //   color: node.data ? node.data.color : 'orange',
+        //   x: (i - 1890) * 20,
+        //   y: node.pos
+        // };
+
+        // Object.defineProperty(r, 'height', {
+        //   get: d => {
+        //     return node.height;
+        //   },
+        //   set: d => {
+        //     node.height = d;
+        //   }
+        // });
+
+        // nodes.push(r);
         nodes.push({
           id: node.id + i,
           name: node.id,
           time: i,
-          pos: node.pos * 1,
+          pos: node.pos,
           parent,
           depth: node.depth,
           height: node.size,
@@ -185,8 +218,9 @@ export default class OrCha {
           width: (node.id + i).split('').length * 10,
           color: node.data ? node.data.color : 'orange',
           x: (i - 1890) * 20,
-          y: 300
+          y: node.pos
         });
+
         // this is the alternative to using hierarchies
         // if (parent && parent != 'fakeRoot' + i)
         //   links.push({
@@ -255,7 +289,7 @@ export default class OrCha {
   _addTagNode(tag) {
     let tagLengthHalf = 2;
     for (let t = tag.time - tagLengthHalf; t < +tag.time + tagLengthHalf; t++) {
-      this._streamData.addNode(t, tag.name, null, null, {
+      this._streamData.addNode(t, tag.name, 1, null, {
         label: tag.text,
         color: tag.color
       });

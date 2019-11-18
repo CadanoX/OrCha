@@ -27,11 +27,14 @@ body {
 #editor-streams,
 #editor-links,
 #editor-tags {
-  height: 33%;
+  height: 25%;
 }
 #charts {
   width: 65%;
   height: 100%;
+}
+#options {
+  width: 10%;
 }
 #chart,
 #graph,
@@ -45,24 +48,6 @@ body {
 
 .stream.active {
   fill: #eeb66d;
-}
-
-.tickCenter {
-  fill: rgb(120, 160, 235);
-  opacity: 0.3;
-}
-.tickCenter.odd {
-  fill: rgb(218, 164, 182);
-  opacity: 0.3;
-}
-
-.tickTop {
-  fill: rgb(78, 122, 241);
-  opacity: 0.3;
-}
-.tickTop.odd {
-  fill: rgb(214, 83, 127);
-  opacity: 0.3;
 }
 
 #popupTag,
@@ -107,8 +92,54 @@ body {
   stroke: orange;
   stroke-width: 3;
 }
-.orientationLine {
+#orientationLine,
+#orientationLine2 {
   stroke-width: 1;
   stroke: lightgrey;
   color: lightgrey;
+}
+
+#orientationLine text {
+  text-anchor: end;
+}
+
+#orientationLine2 {
+  visibility: hidden;
+}
+
+#options {
+  color: lightgrey;
+}
+
+.tickCenter,
+.tickTop {
+  opacity: 0.5;
+}
+
+.tickCenter {
+  fill: rgb(120, 160, 235);
+}
+.tickCenter.odd {
+  fill: rgb(218, 164, 182);
+}
+
+.tickTop {
+  fill: rgb(78, 122, 241);
+}
+.tickTop.odd {
+  fill: rgb(214, 83, 127);
+}
+
+.tickCenter {
+  fill: rgb(110, 110, 110);
+}
+.tickCenter.odd {
+  fill: rgb(152, 187, 159);
+}
+
+.tickTop {
+  fill: rgb(110, 110, 110);
+}
+.tickTop.odd {
+  fill: rgb(223, 118, 69);
 }
