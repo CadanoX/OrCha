@@ -1,5 +1,6 @@
 import '../css/style.css';
 
+import * as d3 from 'd3';
 import Papa from 'papaparse';
 import ace from 'ace-builds';
 import 'ace-builds/webpack-resolver';
@@ -15,6 +16,10 @@ var data = {
   links: [],
   tags: []
 };
+var popupTag;
+var currentTag = {};
+var currentDrag = {};
+var dragTimeStart;
 
 const example = {
   streams: `name,start,end,color,values
@@ -35,13 +40,177 @@ document.addEventListener('DOMContentLoaded', async function(event) {
   orcha = new OrCha(
     document.querySelector('#chart'),
     document.querySelector('#d3graph'),
-    onGraphUpdated
+    onGraphReady
   );
   // cyto = new myCyto(document.querySelector('#graph'), onGraphUpdated);
   setupEditors();
+
+  popupTag = document.querySelector('#popupTag');
 });
 
-function onGraphUpdated(data) {}
+function onGraphReady(data) {
+  activateInteractions();
+}
+
+function getYear(x) {
+  return Math.round(orcha._stream._streamData.xScale.invert(x));
+}
+function activateInteractions() {
+  let con = orcha._stream._pathContainer;
+  let streams = con.selectAll('path.stream');
+
+  // add line to show current time
+  let el = orcha._stream._pathContainer
+    .append('g')
+    .classed('orientationLine', true);
+
+  el.append('line')
+    .attr('y1', orcha._stream._streamData.yScale(0))
+    .attr('y2', orcha._stream._streamData.yScale(1));
+  el.append('text').attr('y', orcha._stream._streamData.yScale(0));
+
+  con.on('mousemove', function(d) {
+    let coords = d3.mouse(this);
+    let line = d3.select('.orientationLine');
+    line.attr('transform', d => 'translate(' + (coords[0] - 2) + ',0)');
+    line.select('text').text(getYear(coords[0]));
+  });
+
+  // click on streams for tags
+  streams.on('click', function(d) {
+    console.log('clicked');
+    let coords = d3.mouse(this);
+    currentTag.time = getYear(coords[0]);
+    currentTag.stream = d.id;
+    showPopupTag();
+  });
+
+  // drag on streams/tags for links
+  streams.call(
+    d3
+      .drag()
+      .on('start', onStreamDragStarted)
+      .on('drag', onStreamDragged)
+      .on('end', onStreamDragEnded)
+  );
+}
+
+function onStreamDragStarted(d) {
+  let coords = d3.mouse(this);
+  currentDrag.startName = d.id;
+  currentDrag.startTime = getYear(coords[0]);
+  dragTimeStart = Date.now();
+  orcha._stream._pathContainer
+    .append('line')
+    .classed('interactionLine', true)
+    .attr('x1', coords[0])
+    .attr('y1', coords[1])
+    .attr('x2', coords[0])
+    .attr('y2', coords[1]);
+}
+
+function onStreamDragged(d) {
+  let coords = d3.mouse(this);
+  d3.select('.interactionLine')
+    .attr('x2', coords[0])
+    .attr('y2', coords[1]);
+}
+
+function onStreamDragEnded(d) {
+  let dragTime = Date.now() - dragTimeStart;
+  d3.select('.interactionLine').remove();
+  // if drag is too fast, it is a click
+  if (dragTime < 300) {
+    currentDrag = {};
+    return;
+  }
+
+  let coords = d3.mouse(this);
+  // get target of drop
+  let target = d3.select(
+    document.elementFromPoint(
+      d3.event.sourceEvent.clientX,
+      d3.event.sourceEvent.clientY
+    )
+  );
+  let targetNode = target.node();
+  // remove "stream" and "chart from the ID"
+  let id = targetNode.id.slice(6, -5);
+  currentDrag.endName = id;
+  currentDrag.endTime = getYear(coords[0]);
+  handleDrag(currentDrag);
+}
+
+function handleDrag(drag) {
+  if (!drag.startName && !drag.endName) showPopupStream();
+  else if (!drag.startName || !drag.endName) return;
+  else if (drag.startName == drag.endName) {
+    drag.parent = drag.startName;
+    showPopupStream();
+  } else addLink(drag);
+}
+
+function showPopupTag() {
+  popupTag.style.visibility = 'visible';
+}
+
+function showPopupStream() {
+  popupStream.style.visibility = 'visible';
+}
+
+window.onTagNameCancel = () => {
+  popupTag.style.visibility = 'hidden';
+  popupTag.querySelector('input').value = '';
+  currentTag = {};
+};
+window.onTagNameOk = () => {
+  currentTag.text = popupTag.querySelector('input').value;
+  addTag(currentTag);
+  popupTag.style.visibility = 'hidden';
+  popupTag.querySelector('input').value = '';
+  currentTag = {};
+};
+window.onStreamNameCancel = () => {
+  popupStream.style.visibility = 'hidden';
+  popupStream.querySelector('input').value = '';
+  currentDrag = {};
+};
+window.onStreamNameOk = () => {
+  currentDrag.name = popupStream.querySelector('input').value;
+  addStream(currentDrag);
+  popupStream.style.visibility = 'hidden';
+  popupStream.querySelector('input').value = '';
+  currentDrag = {};
+};
+
+function addTag(tag) {
+  let e = editors['tags'];
+  let col = e.session.getLength();
+  e.moveCursorTo(col + 1, 0);
+  e.insert(`\n${tag.stream},${tag.time},${tag.text}`);
+}
+
+function addStream(stream) {
+  let e = editors['streams'];
+  let col = e.session.getLength();
+  e.moveCursorTo(col + 1, 0);
+  if (!stream.parent) {
+    // this can currently not happen because dragging on SVG triggers zoom
+    console.log('addStream');
+  } else {
+    e.insert(
+      `\n${stream.name},${stream.startTime},${stream.endTime},orange,,${stream.parent}`
+    );
+  }
+}
+function addLink(link) {
+  let e = editors['links'];
+  let col = e.session.getLength();
+  e.moveCursorTo(col + 1, 0);
+  e.insert(
+    `\n${link.startName},${link.startTime},${link.endName},${link.endTime}`
+  );
+}
 
 function setupEditors() {
   for (let name of ['streams', 'links', 'tags']) {

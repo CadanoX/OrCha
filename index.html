@@ -22,6 +22,28 @@
       <div id="d3graph"></div>
       <div id="chart"></div>
     </div>
+    <div id="popupTag">
+      <div class='inner'>
+      <b>ADD TAG:</b>
+      <input type="text" name="tagName">
+      <br/>
+      <div>
+        <button onclick="onTagNameCancel()" style="float: left;">Cancel</button>
+        <button type="submit" onclick="onTagNameOk(this)" style="float: right;">OK</button>
+      </div>
+      </div>
+    </div>
+    <div id="popupStream">
+      <div class='inner'>
+        <b>ADD STREAM:</b>
+        <input type="text" name="streamName">
+        <br />
+        <div>
+          <button onclick="onStreamNameCancel()" style="float: left;">Cancel</button>
+          <button type="submit" onclick="onStreamNameOk(this)" style="float: right;">OK</button>
+        </div>
+      </div>
+    </div>
   </div>
 </body>
 

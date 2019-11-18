@@ -14,9 +14,9 @@ export default class MyForce {
     // this._sim.stop();
     // this._sim.alpha(0);
     this._sim.velocityDecay(0.05); // default 0.4
-    this._sim.alphaDecay(0.01); // default 0.028
+    this._sim.alphaDecay(1); // default 0.028
     this._sim.on('tick', () => this._tick());
-    if (this._callbackEnd) this._sim.on('end', this._callbackEnd);
+    if (this._opts.callbackEnd) this._sim.on('end', this._opts.callbackEnd);
   }
 
   data(d) {
@@ -28,14 +28,14 @@ export default class MyForce {
     data.nodes.forEach(d => {
       // fix nodes in x direction
       d.fx = +d.time * 100;
-      // d.fy = d.pos;
+      d.fy = d.pos;
     });
     //set
     this._data = data;
     this._sim.nodes(this._data.nodes);
     this._sim.force(
       'forceY',
-      d3.forceY(this._opts.range[1] / 2).strength(0.01)
+      d3.forceY(this._opts.range[1] / 2).strength(0.05)
     );
     this._sim.force(
       'link',
@@ -49,14 +49,13 @@ export default class MyForce {
           return 0;
         })
     );
-    this._sim.force('charge', d3.forceManyBody().strength(-5));
+    this._sim.force('charge', d3.forceManyBody().strength(-4));
     this._sim.force(
       'collide',
       d3
         .forceCollide()
         .radius(d => d.height)
         .strength(0.2) // default 0.7
-      // .iterations(100)
     );
   }
 

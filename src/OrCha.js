@@ -12,8 +12,8 @@ import MyGraph from './Graph';
 import { interpolateOranges } from 'd3-scale-chromatic';
 
 export default class OrCha {
-  constructor(streamContainer, graphContainer, callback) {
-    this._callback = callback;
+  constructor(streamContainer, graphContainer, readyFunction) {
+    this._callback = readyFunction;
     this._stream = new SplitStream(streamContainer, {
       mirror: true,
       offset: 'zero',
@@ -35,6 +35,7 @@ export default class OrCha {
     this._graphData;
     this._graphLayout = new MyForce({
       callbackTick: this._onForceUpdate.bind(this),
+      callbackEnd: this._onForceEnd.bind(this),
       range: [undefined, graphContainer.clientHeight]
     });
     this._graph = new MyGraph(graphContainer);
@@ -61,17 +62,43 @@ export default class OrCha {
     this._graphLayout.data(this._graphData);
     this._graphLayout.run(100);
 
-    this._makeFancyTimeline();
+    // this._makeFancyTimeline();
   }
 
   _makeFancyTimeline() {
-    this._stream._axesContainer
-      .selectAll('.tick line')
-      .nodes()
-      .forEach(d => {
-        let tick = d3.select(d);
-        let test;
+    let axes = this._stream._axesContainer;
+    let ticks = axes.selectAll('.tick line');
+    let tick1 = ticks._groups[0][0];
+    let tick2 = ticks._groups[0][1];
+    let height = tick1.getBBox().height;
+    let x1 = tick1.parentNode.transform.baseVal[0].matrix.e;
+    let x2 = tick2.parentNode.transform.baseVal[0].matrix.e;
+    let width = x2 - x1;
+
+    axes
+      .selectAll('.tick')
+      .append('rect')
+      .attr('width', width)
+      .attr('height', height)
+      .classed('tickCenter', true)
+      .classed('odd', function(d, i) {
+        return i % 2 ? false : true;
       });
+    axes
+      .selectAll('.tick')
+      .append('rect')
+      .attr('width', width)
+      .attr('height', 25)
+      .classed('tickTop', true)
+      .classed('odd', (d, i) => (i % 2 ? false : true));
+
+    // this._stream._axesContainer
+    //   .selectAll('.tick line')
+    //   .nodes()
+    //   .forEach(d => {
+    //     let tick = d3.select(d);
+    //     let test;
+    //   });
   }
 
   _inputToStream(d) {
@@ -273,7 +300,10 @@ export default class OrCha {
     }
     this._streamData.finalize();
     this._stream.data(this._streamData);
+  }
 
+  _onForceEnd() {
+    this._makeFancyTimeline();
     this._callback();
   }
 

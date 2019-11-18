@@ -46,3 +46,69 @@ body {
 .stream.active {
   fill: #eeb66d;
 }
+
+.tickCenter {
+  fill: rgb(120, 160, 235);
+  opacity: 0.3;
+}
+.tickCenter.odd {
+  fill: rgb(218, 164, 182);
+  opacity: 0.3;
+}
+
+.tickTop {
+  fill: rgb(78, 122, 241);
+  opacity: 0.3;
+}
+.tickTop.odd {
+  fill: rgb(214, 83, 127);
+  opacity: 0.3;
+}
+
+#popupTag,
+#popupStream {
+  background-color: rgba(0.2, 0.2, 0.2, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  visibility: hidden;
+  z-index: 10;
+}
+
+#popupTag .inner,
+#popupStream .inner {
+  background-color: #222222;
+  display: flex;
+  flex-direction: column;
+  margin: auto;
+  width: 30%;
+  padding: 15px;
+}
+
+#popupTag .inner b,
+#popupStream .inner b {
+  color: white;
+}
+#popupTag .inner input,
+#popupStream .inner input {
+  border: 0;
+  width: 100%;
+}
+
+#popupTag .inner button,
+#popupStream .inner button {
+  width: 45%;
+}
+
+.interactionLine {
+  stroke: orange;
+  stroke-width: 3;
+}
+.orientationLine {
+  stroke-width: 1;
+  stroke: lightgrey;
+  color: lightgrey;
+}
