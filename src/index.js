@@ -81,20 +81,20 @@ function forceParameterChanged(option) {
   orcha.updateForce(option.dataset.name, value);
 }
 
-function onGraphReady(data) {
-  activateInteractions();
-}
+function onGraphReady(data) {}
 
 function getYear(x) {
   return Math.round(orcha._stream._streamData.xScale.invert(x));
 }
-function activateInteractions() {
-  let con = orcha._stream._zoomContainer;
-  let streams = con.selectAll('path.stream');
 
+function activateInteractions() {
+  let tooltips = orcha._stream._tooltipContainer;
+  let streamCon = orcha._stream._pathContainer;
+
+  tooltips.selectAll('*').remove();
   // add line to show current time
-  let el = con.append('g').attr('id', 'orientationLine');
-  let el2 = con.append('g').attr('id', 'orientationLine2');
+  let el = tooltips.append('g').attr('id', 'orientationLine');
+  let el2 = tooltips.append('g').attr('id', 'orientationLine2');
 
   el.append('line')
     .attr('y1', orcha._stream._streamData.yScale(0))
@@ -107,31 +107,33 @@ function activateInteractions() {
     .attr('y2', orcha._stream._streamData.yScale(1));
   el2.append('text').attr('y', orcha._stream._streamData.yScale(0));
 
-  con.on('mousemove', function(d) {
+  streamCon.on('mousemove', function(d) {
+    updateLine('orientationLine', d3.mouse(this));
+  });
+  orcha._stream._axesContainer.on('mousemove', function(d) {
     updateLine('orientationLine', d3.mouse(this));
   });
 
+  let streams = streamCon
+    .selectAll('path.stream')
+    .filter(d => d.id != 'fakeRoot');
   // click on streams for tags
-  streams
-    .filter(d => d.id != 'fakeRoot')
-    .on('click', function(d) {
-      console.log('clicked');
-      let coords = d3.mouse(this);
-      currentTag.time = getYear(coords[0]);
-      currentTag.stream = d.id;
-      showPopupTag();
-    });
+  streams.on('click', function(d) {
+    console.log('clicked');
+    let coords = d3.mouse(this);
+    currentTag.time = getYear(coords[0]);
+    currentTag.stream = d.id;
+    showPopupTag();
+  });
 
   // drag on streams/tags for links
-  streams
-    .filter(d => d.id != 'fakeRoot')
-    .call(
-      d3
-        .drag()
-        .on('start', onStreamDragStarted)
-        .on('drag', onStreamDragged)
-        .on('end', onStreamDragEnded)
-    );
+  streams.call(
+    d3
+      .drag()
+      .on('start', onStreamDragStarted)
+      .on('drag', onStreamDragged)
+      .on('end', onStreamDragEnded)
+  );
 }
 
 function updateLine(id, coords) {
@@ -140,11 +142,7 @@ function updateLine(id, coords) {
   line.select('text').text(getYear(coords[0]));
 }
 
-function onStreamDragStarted(d) {
-  let coords = d3.mouse(this);
-  currentDrag.startName = d.id;
-  currentDrag.startTime = getYear(coords[0]);
-  dragTimeStart = Date.now();
+function addInteractionLine(coords) {
   orcha._stream._zoomContainer
     .append('line')
     .classed('interactionLine', true)
@@ -152,6 +150,19 @@ function onStreamDragStarted(d) {
     .attr('y1', coords[1])
     .attr('x2', coords[0])
     .attr('y2', coords[1]);
+}
+function updateInteractionLine(coords) {
+  d3.select('.interactionLine')
+    .attr('x2', coords[0])
+    .attr('y2', coords[1]);
+}
+
+function onStreamDragStarted(d) {
+  let coords = d3.mouse(this);
+  currentDrag.startName = d.id;
+  currentDrag.startTime = getYear(coords[0]);
+  dragTimeStart = Date.now();
+  addInteractionLine(coords);
 
   updateLine('orientationLine2', coords);
   d3.select('#orientationLine2').style('visibility', 'visible');
@@ -159,18 +170,14 @@ function onStreamDragStarted(d) {
 
 function onStreamDragged(d) {
   let coords = d3.mouse(this);
-  d3.select('.interactionLine')
-    .attr('x2', coords[0])
-    .attr('y2', coords[1]);
-
+  updateInteractionLine(coords);
   updateLine('orientationLine2', coords);
-  d3.select('#orientationLine2').style('visibility', 'hidden');
 }
 
 function onStreamDragEnded(d) {
   let dragTime = Date.now() - dragTimeStart;
   d3.select('.interactionLine').remove();
-  d3.select('#orientationLine2').visibility = 'hidden';
+  d3.select('#orientationLine2').style('visibility', 'hidden');
   // if drag is too fast, it is a click
   if (dragTime < 300) {
     currentDrag = {};
@@ -259,6 +266,7 @@ function addStream(stream) {
 function addLink(link) {
   let e = editors['links'];
   let col = e.session.getLength();
+  if (link.startTime == link.endTime) link.endTime = '';
   e.moveCursorTo(col + 1, 0);
   e.insert(
     `\n${link.startName},${link.startTime},${link.endName},${link.endTime}`
@@ -289,6 +297,7 @@ function onDataChanged(type) {
     storeData(type, content);
     data[type] = parsed;
     orcha.data(data);
+    activateInteractions();
     // cyto.data(orcha.graphData());
     // console.log(graphToDot(graphData));
   }

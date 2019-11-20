@@ -41,7 +41,7 @@ export default class OrCha {
     });
     this._graph = new MyGraph(graphContainer);
 
-    this._streamSize = 10;
+    this._streamSize = 3;
   }
 
   set streamSize(value) {
@@ -260,38 +260,38 @@ export default class OrCha {
           color: stream.color
         }
       );
-    }
-    if (stream.parentStart) {
-      this._streamData.addNext(stream.start, stream.parentStart, stream.name);
-    }
-    if (stream.parentEnd) {
-      this._streamData.addNext(stream.end, stream.name, stream.parentEnd);
+      if (stream.parent)
+        this._streamData.addParent(t, stream.name, stream.parent);
     }
   }
 
   _addLinks(link) {
     if (!isNumeric(link.start)) return;
-    if (!isNumeric(link.end)) link.end = link.start;
-    if (link.start > link.end) return;
+    if (!isNumeric(link.end)) link.end = +link.start + 1;
+    if (link.start >= link.end) return;
+    // TODO: possibly this is not a unique name
     link.name = link.from + link.to;
-    // stream moves fluently into the other stream
+
+    let last = link.from;
+    // add inbetween nodes
+    if (link.end - link.start > 1) {
+      for (let t = +link.start + 1; t < link.end; t++) {
+        this._streamData.addNode(t, link.name, 1);
+      }
+      this._streamData.addNext(link.start, link.from, link.name);
+      last = link.name;
+    }
+    // add ending
     if (link.type == 'merge') {
-      this._streamData.addNext(link.end, link.from, link.to);
+      // stream moves fluently into the other stream
+      this._streamData.addNext(link.end - 1, last, link.to);
     } else {
       // stream attaches to the other stream
       let linkEnd = link.name + 'port';
-      this._streamData.addNode(+link.end + 1, linkEnd);
-      this._streamData.addParent(+link.end + 1, linkEnd, link.to);
-      this._streamData.addNext(link.end, link.from, linkEnd);
+      this._streamData.addNode(link.end, linkEnd);
+      this._streamData.addParent(link.end, linkEnd, link.to);
+      this._streamData.addNext(link.end - 1, last, linkEnd);
     }
-    // if (link.end - link.start == 0) {
-    // } else {
-    //   for (let t = +link.start + 1; t <= link.end; t++) {
-    //     this._format.addNode(t, link.name);
-    //   }
-    //   this._format.addNext(link.start, link.from, link.name);
-    //   this._format.addNext(link.end, link.name, linkEnd);
-    // }
   }
 
   _addTagNode(tag) {
