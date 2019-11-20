@@ -163,6 +163,8 @@ export default class OrCha {
 
     this._streamData.connectEqualIds();
     this._streamData.finalize();
+
+    // set fakeRoot to window height
   }
 
   _streamDataToGraph(data) {
@@ -249,9 +251,15 @@ export default class OrCha {
     if (stream.start > stream.end) return;
 
     for (let t = stream.start; t <= stream.end; t++) {
-      this._streamData.addNode(t, stream.name, this._getSize(stream, t), null, {
-        color: stream.color
-      });
+      this._streamData.addNode(
+        t,
+        stream.name,
+        this._getSize(stream, t),
+        undefined,
+        {
+          color: stream.color
+        }
+      );
     }
     if (stream.parentStart) {
       this._streamData.addNext(stream.start, stream.parentStart, stream.name);
@@ -289,7 +297,7 @@ export default class OrCha {
   _addTagNode(tag) {
     let tagLengthHalf = 2;
     for (let t = tag.time - tagLengthHalf; t < +tag.time + tagLengthHalf; t++) {
-      this._streamData.addNode(t, tag.name, 1, null, {
+      this._streamData.addNode(t, tag.name, 1, undefined, {
         label: tag.text,
         color: tag.color
       });
@@ -327,10 +335,10 @@ export default class OrCha {
   _onForceUpdate() {
     this._graph.data(this._graphData);
     for (let node of this._graphData.nodes) {
-      this._streamData._timesteps[node.time].references[node.name].dataPos =
-        node.y;
-      if (this._streamData._timesteps[node.time].tree.dataSize < node.y)
-        this._streamData._timesteps[node.time].tree.dataSize = node.y;
+      let nodes = this._streamData._timesteps[node.time];
+      nodes.references[node.name].dataPos = node.y;
+      if (nodes.tree.dataSize < node.y + node.height)
+        nodes.tree.dataSize = node.y + node.height;
     }
     this._streamData.finalize();
     this._stream.data(this._streamData);

@@ -35,18 +35,33 @@ export default class MyForce {
   set forceLink(value) {
     this._sim.force('forceLink').strength(value);
   }
+  set linkIterations(value) {
+    this._sim.force('forceLink').iterations(value);
+  }
+  set linkDistance(value) {
+    this._sim.force('forceLink').distance(value);
+  }
   set forceBody(value) {
     this._sim.force('forceBody').strength(value);
   }
   set forceCollision(value) {
     this._sim.force('forceCollision').strength(value);
   }
+  set forceCrossing(value) {
+    this._sim.force('forceCrossing').strength(value);
+  }
+  set forceCrossingMinDistance(value) {
+    this._sim.force('forceCrossing').distanceMin(value);
+  }
+  set forceCrossingMaxDistance(value) {
+    this._sim.force('forceCrossing').distanceMax(value);
+  }
 
   _setData(data) {
     // preprocess
     data.nodes.forEach(d => {
       // fix nodes in x direction
-      d.fx = +d.time * 100;
+      d.fx = +d.time;
       // d.fy = d.pos;
     });
     //set
@@ -66,8 +81,10 @@ export default class MyForce {
           if (d.target.id.startsWith(sourceTag)) return 1;
           else return 1;
         })
+        .distance(1)
     );
-    this._sim.force('forceBody', d3.forceManyBody().strength(-10));
+    this._sim.force('forceBody', d3.forceManyBody().strength(-0.1));
+    this._sim.force('forceCrossing', d3.forceManyBody().strength(0));
     this._sim.force(
       'forceCollision',
       d3
@@ -79,16 +96,23 @@ export default class MyForce {
 
   _tick() {
     let { range } = this._opts;
-    // force nodes back into their parent elements
-    // for (let i = 0; i < this._data.nodes.length; i++) {
-    //   let node = this._data.nodes[i];
-    // }
 
-    this._data.nodes.forEach(d => {
+    this._data.nodes.forEach(function(d) {
       // keep nodes in window bounds
       if (range[0]) d.x = Math.max(0, Math.min(range[0] - d.width, d.x));
       if (range[1]) d.y = Math.max(0, Math.min(range[1] - d.height, d.y));
-    });
+
+      // force nodes back into their parent elements
+      // TODO: this is super inefficient. store data in an object with IDs instead
+      // remember to move all parents into window before moving children into parents
+      if (d.parent) {
+        let parent = this._data.nodes.find(p => p.id == d.parent);
+        d.y = Math.max(
+          parent.y,
+          Math.min(parent.y + parent.height - d.height, d.y)
+        );
+      }
+    }, this);
 
     this._opts.callbackTick();
   }
