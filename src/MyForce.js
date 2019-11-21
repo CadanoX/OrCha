@@ -29,6 +29,9 @@ export default class MyForce {
   set alphaDecay(value) {
     this._sim.alphaDecay(value);
   }
+  set forceYValue(value) {
+    this._sim.force('forceY').y(value);
+  }
   set forceY(value) {
     this._sim.force('forceY').strength(value);
   }
@@ -69,7 +72,7 @@ export default class MyForce {
     this._sim.nodes(this._data.nodes);
     this._sim.force(
       'forceY',
-      d3.forceY(this._opts.range[1] / 2).strength(0.01)
+      d3.forceY(this._opts.range[1] / 2).strength(0.02)
     );
     this._sim.force(
       'forceLink',
@@ -81,7 +84,8 @@ export default class MyForce {
           if (d.target.id.startsWith(sourceTag)) return 1;
           else return 1;
         })
-        .distance(1)
+        .distance(0)
+        .iterations(20)
     );
     this._sim.force('forceBody', d3.forceManyBody().strength(-0.1));
     this._sim.force('forceCrossing', d3.forceManyBody().strength(0));

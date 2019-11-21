@@ -21,6 +21,7 @@ var popupStream;
 var currentTag = {};
 var currentDrag = {};
 var dragTimeStart;
+var linkInQueue;
 
 const example = {
   streams: `name,start,end,color,values
@@ -40,7 +41,8 @@ Theater,1924,Cherry Lane Theater,inner`
 document.addEventListener('DOMContentLoaded', async function(event) {
   orcha = new OrCha(
     document.querySelector('#chart'),
-    document.querySelector('#d3graph'),
+    undefined,
+    // document.querySelector('#d3graph'),
     onGraphReady
   );
   // cyto = new myCyto(document.querySelector('#graph'), onGraphUpdated);
@@ -90,6 +92,12 @@ function getYear(x) {
 function activateInteractions() {
   let tooltips = orcha._stream._tooltipContainer;
   let streamCon = orcha._stream._pathContainer;
+  let background = orcha._stream._zoomContainer
+    .insert('rect', ':first-child')
+    .attr('width', orcha._stream._container.clientWidth)
+    .attr('height', orcha._stream._container.clientHeight)
+    .attr('fill', 'white')
+    .attr('fill-opacity', 0);
 
   tooltips.selectAll('*').remove();
   // add line to show current time
@@ -107,10 +115,7 @@ function activateInteractions() {
     .attr('y2', orcha._stream._streamData.yScale(1));
   el2.append('text').attr('y', orcha._stream._streamData.yScale(0));
 
-  streamCon.on('mousemove', function(d) {
-    updateLine('orientationLine', d3.mouse(this));
-  });
-  orcha._stream._axesContainer.on('mousemove', function(d) {
+  orcha._stream._zoomContainer.on('mousemove', function() {
     updateLine('orientationLine', d3.mouse(this));
   });
 
@@ -119,15 +124,13 @@ function activateInteractions() {
     .filter(d => d.id != 'fakeRoot');
   // click on streams for tags
   streams.on('click', function(d) {
-    console.log('clicked');
     let coords = d3.mouse(this);
     currentTag.time = getYear(coords[0]);
     currentTag.stream = d.id;
     showPopupTag();
   });
 
-  // drag on streams/tags for links
-  streams.call(
+  orcha._stream._zoomContainer.call(
     d3
       .drag()
       .on('start', onStreamDragStarted)
@@ -154,16 +157,21 @@ function addInteractionLine(coords) {
 function updateInteractionLine(coords) {
   d3.select('.interactionLine')
     .attr('x2', coords[0])
-    .attr('y2', coords[1]);
+    .attr('y2', coords[1] + 2);
 }
 
-function onStreamDragStarted(d) {
-  let coords = d3.mouse(this);
-  currentDrag.startName = d.id;
-  currentDrag.startTime = getYear(coords[0]);
+function onStreamDragStarted() {
   dragTimeStart = Date.now();
-  addInteractionLine(coords);
+  let coords = d3.mouse(this);
+  currentDrag.startTime = getYear(coords[0]);
+  let stream = d3.event.sourceEvent.path[0];
+  // remove "stream" and "chart from the ID"
+  currentDrag.startName = stream.classList.contains('stream')
+    ? stream.id.slice(6, -5)
+    : undefined;
+  if (currentDrag.startName == 'fakeRoot') currentDrag.startName = undefined;
 
+  addInteractionLine(coords);
   updateLine('orientationLine2', coords);
   d3.select('#orientationLine2').style('visibility', 'visible');
 }
@@ -174,7 +182,7 @@ function onStreamDragged(d) {
   updateLine('orientationLine2', coords);
 }
 
-function onStreamDragEnded(d) {
+function onStreamDragEnded() {
   let dragTime = Date.now() - dragTimeStart;
   d3.select('.interactionLine').remove();
   d3.select('#orientationLine2').style('visibility', 'hidden');
@@ -185,28 +193,50 @@ function onStreamDragEnded(d) {
   }
 
   let coords = d3.mouse(this);
-  // get target of drop
-  let target = d3.select(
-    document.elementFromPoint(
-      d3.event.sourceEvent.clientX,
-      d3.event.sourceEvent.clientY
-    )
-  );
-  let targetNode = target.node();
-  // remove "stream" and "chart from the ID"
-  let id = targetNode.id.slice(6, -5);
-  currentDrag.endName = id;
   currentDrag.endTime = getYear(coords[0]);
+  let stream = d3.event.sourceEvent.path[0];
+  // remove "stream" and "chart from the ID"
+  currentDrag.endName = stream.classList.contains('stream')
+    ? stream.id.slice(6, -5)
+    : undefined;
+  if (currentDrag.endName == 'fakeRoot') currentDrag.endName = undefined;
+
   handleDrag(currentDrag);
 }
 
 function handleDrag(drag) {
+  // swap time to always go from lower to higher
+  if (drag.endTime < drag.startTime) {
+    [drag.endTime, drag.startTime] = [drag.startTime, drag.endTime];
+    [drag.endName, drag.startName] = [drag.startName, drag.endName];
+  }
+  // create new stream
   if (!drag.startName && !drag.endName) showPopupStream();
-  else if (!drag.startName || !drag.endName) return;
+  // create a new stream linked to an existing stream
+  else if (!drag.startName) {
+    drag.endTime -= 1;
+    linkInQueue = {
+      missing: 'startName',
+      startTime: drag.endTime,
+      endName: drag.endName
+    };
+    showPopupStream();
+  } else if (!drag.endName) {
+    linkInQueue = {
+      missing: 'endName',
+      startTime: drag.startTime,
+      startName: drag.startName
+    };
+    drag.startTime += 1;
+    showPopupStream();
+  }
+  // create nested stream
   else if (drag.startName == drag.endName) {
     drag.parent = drag.startName;
     showPopupStream();
-  } else addLink(drag);
+  }
+  // create link between 2 existing streams
+  else addLink(drag);
 }
 
 function showPopupTag() {
@@ -234,10 +264,16 @@ window.onStreamNameCancel = () => {
   popupStream.style.visibility = 'hidden';
   popupStream.querySelector('input').value = '';
   currentDrag = {};
+  linkInQueue = undefined;
 };
 window.onStreamNameOk = () => {
   currentDrag.name = popupStream.querySelector('input').value;
   addStream(currentDrag);
+  if (linkInQueue) {
+    linkInQueue[linkInQueue.missing] = currentDrag.name;
+    addLink(linkInQueue, true);
+    linkInQueue = undefined;
+  }
   popupStream.style.visibility = 'hidden';
   popupStream.querySelector('input').value = '';
   currentDrag = {};
@@ -254,23 +290,28 @@ function addStream(stream) {
   let e = editors['streams'];
   let col = e.session.getLength();
   e.moveCursorTo(col + 1, 0);
+  // insert new stream
   if (!stream.parent) {
-    // this can currently not happen because dragging on SVG triggers zoom
-    console.log('addStream');
+    e.insert(`\n${stream.name},${stream.startTime},${stream.endTime},orange`);
   } else {
+    // insert nested stream
     e.insert(
       `\n${stream.name},${stream.startTime},${stream.endTime},orange,,${stream.parent}`
     );
   }
 }
-function addLink(link) {
+function addLink(link, merge = false) {
   let e = editors['links'];
   let col = e.session.getLength();
   if (link.startTime == link.endTime) link.endTime = '';
   e.moveCursorTo(col + 1, 0);
-  e.insert(
-    `\n${link.startName},${link.startTime},${link.endName},${link.endTime}`
-  );
+  if (!link.endTime)
+    e.insert(`\n${link.startName},${link.startTime},${link.endName},,`);
+  else
+    e.insert(
+      `\n${link.startName},${link.startTime},${link.endName},${link.endTime}`
+    );
+  if (merge) e.insert('merge');
 }
 
 function setupEditors() {

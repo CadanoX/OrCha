@@ -36,12 +36,13 @@ export default class OrCha {
     this._graphData;
     this._graphLayout = new MyForce({
       callbackTick: this._onForceUpdate.bind(this),
-      callbackEnd: this._onForceEnd.bind(this),
-      range: [undefined, graphContainer.clientHeight]
+      callbackEnd: this._onForceEnd.bind(this)
+      // range: [undefined, streamContainer.clientHeight]
     });
-    this._graph = new MyGraph(graphContainer);
 
-    this._streamSize = 3;
+    if (graphContainer) this._graph = new MyGraph(graphContainer);
+
+    this._streamSize = 1;
   }
 
   set streamSize(value) {
@@ -66,6 +67,7 @@ export default class OrCha {
     this._stream.data(this._streamData);
     this._graphData = this._streamDataToGraph(this._streamData);
     this._graphLayout.data(this._graphData);
+    this._graphLayout.forceYValue = this._stream._maxValue;
     this._graphLayout.run();
 
     this._makeFancyTimeline();
@@ -119,7 +121,14 @@ export default class OrCha {
     let streamTags = {}; // find correlated streams for outer tags
     let streamColors = {};
 
-    d.streams.forEach(stream => (streamColors[stream.name] = stream.color));
+    d.streams.forEach(stream => {
+      // TODO: inefficient, use object with id as key
+      if (stream.parent) {
+        let parent = d.streams.find(d => d.name == stream.parent);
+        if (parent) stream.color = this.__getDarkerColor(parent.color);
+      }
+      streamColors[stream.name] = stream.color;
+    });
 
     // randomly position tags above or below their corresponding stream
     let i = 0;
@@ -333,7 +342,9 @@ export default class OrCha {
   }
 
   _onForceUpdate() {
-    this._graph.data(this._graphData);
+    if (this._graph) this._graph.data(this._graphData);
+    for (let t in this._streamData._timesteps)
+      this._streamData._timesteps[t].tree.dataSize = 0;
     for (let node of this._graphData.nodes) {
       let nodes = this._streamData._timesteps[node.time];
       nodes.references[node.name].dataPos = node.y;

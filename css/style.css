@@ -19,19 +19,26 @@ body {
   flex-direction: row;
 }
 
+#left {
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+}
 #editors {
-  float: left;
-  width: 35%;
-  height: 100%;
+  display: flex;
+  flex-direction: row;
+  /* float: left; */
+  width: 100%;
+  height: 20%;
 }
 #editor-streams,
 #editor-links,
 #editor-tags {
-  height: 25%;
+  width: 33%;
 }
 #charts {
-  width: 65%;
-  height: 100%;
+  width: 100%;
+  height: 80%;
 }
 #options {
   width: 10%;
@@ -39,10 +46,11 @@ body {
 #chart,
 #graph,
 #d3graph {
-  height: 50%;
+  height: 100%;
 }
 
-#graph {
+#graph,
+#d3graph {
   display: none;
 }
 
