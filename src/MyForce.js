@@ -35,15 +35,6 @@ export default class MyForce {
   set forceY(value) {
     this._sim.force('forceY').strength(value);
   }
-  set forceLink(value) {
-    this._sim.force('forceLink').strength(value);
-  }
-  set linkIterations(value) {
-    this._sim.force('forceLink').iterations(value);
-  }
-  set linkDistance(value) {
-    this._sim.force('forceLink').distance(value);
-  }
   set forceBody(value) {
     this._sim.force('forceBody').strength(value);
   }
@@ -58,6 +49,24 @@ export default class MyForce {
   }
   set forceCrossingMaxDistance(value) {
     this._sim.force('forceCrossing').distanceMax(value);
+  }
+  set linkForceStream(value) {
+    this._sim.force('forceLinkStream').strength(value);
+  }
+  set linkIterationsStream(value) {
+    this._sim.force('forceLinkStream').iterations(value);
+  }
+  set linkDistanceStream(value) {
+    this._sim.force('forceLinkStream').distance(value);
+  }
+  set linkForce(value) {
+    this._sim.force('forceLink').strength(value);
+  }
+  set linkIterations(value) {
+    this._sim.force('forceLink').iterations(value);
+  }
+  set linkDistance(value) {
+    this._sim.force('forceLink').distance(value);
   }
 
   _setData(data) {
@@ -74,27 +83,43 @@ export default class MyForce {
       'forceY',
       d3.forceY(this._opts.range[1] / 2).strength(0.02)
     );
-    this._sim.force(
-      'forceLink',
-      d3
-        .forceLink(data.links)
-        .id(d => d.id)
-        .strength(d => {
-          let sourceTag = d.source.id.split('1')[0];
-          if (d.target.id.startsWith(sourceTag)) return 1;
-          else return 1;
-        })
-        .distance(0)
-        .iterations(20)
-    );
     this._sim.force('forceBody', d3.forceManyBody().strength(-0.1));
     this._sim.force('forceCrossing', d3.forceManyBody().strength(0));
     this._sim.force(
       'forceCollision',
       d3
         .forceCollide()
-        .radius(d => d.height)
+        .radius(d => d.height * 2)
         .strength(0) // default 0.7
+    );
+
+    this._sim.force(
+      'forceLinkStream',
+      d3
+        .forceLink(data.links.filter(d => d.type == 'stream'))
+        .id(d => d.id)
+        .strength(1)
+        .iterations(20)
+        .distance(0)
+    );
+    this._sim.force(
+      'forceLink',
+      d3
+        .forceLink(data.links.filter(d => d.type == 'link'))
+        .id(d => d.id)
+        .strength(0.1)
+        .iterations(1)
+        .distance(0)
+    );
+
+    this._sim.force(
+      'forcePort',
+      d3
+        .forceLink(data.links.filter(d => d.id.includes('port')))
+        .id(d => d.id)
+        .strength(1)
+        .iterations(20)
+        .distance(0)
     );
   }
 
@@ -103,8 +128,8 @@ export default class MyForce {
 
     this._data.nodes.forEach(function(d) {
       // keep nodes in window bounds
-      if (range[0]) d.x = Math.max(0, Math.min(range[0] - d.width, d.x));
-      if (range[1]) d.y = Math.max(0, Math.min(range[1] - d.height, d.y));
+      if (range[0]) d.x = Math.max(0, Math.min(range[0] - d.width / 2, d.x));
+      if (range[1]) d.y = Math.max(0, Math.min(range[1] - d.height / 2, d.y));
 
       // force nodes back into their parent elements
       // TODO: this is super inefficient. store data in an object with IDs instead
@@ -112,8 +137,8 @@ export default class MyForce {
       if (d.parent) {
         let parent = this._data.nodes.find(p => p.id == d.parent);
         d.y = Math.max(
-          parent.y,
-          Math.min(parent.y + parent.height - d.height, d.y)
+          parent.y - parent.height / 2 + d.height / 2,
+          Math.min(parent.y + parent.height / 2 - d.height / 2, d.y)
         );
       }
     }, this);

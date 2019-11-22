@@ -66,7 +66,7 @@ function setupPopups() {
 }
 
 function setupOptions() {
-  let options = document.querySelectorAll('#options > *');
+  let options = document.querySelectorAll('#options > div');
   for (let option of options) {
     option.querySelector('input').oninput = () => forceParameterChanged(option);
     option.querySelector('input').onchange = () => {

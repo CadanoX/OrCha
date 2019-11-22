@@ -189,34 +189,7 @@ export default class OrCha {
           node.parent && node.parent.id != 'fakeRoot'
             ? node.parent.id + i
             : undefined;
-        // dagre does not support clusters, so we need to
-        // let movePortsInRank (node.id.endsWith('port'))
 
-        // const r = {
-        //   id: node.id + i,
-        //   name: node.id,
-        //   time: i,
-        //   pos: node.pos,
-        //   parent,
-        //   depth: node.depth,
-        //   height: node.size,
-        //   // height: 50,
-        //   width: (node.id + i).split('').length * 10,
-        //   color: node.data ? node.data.color : 'orange',
-        //   x: (i - 1890) * 20,
-        //   y: node.pos
-        // };
-
-        // Object.defineProperty(r, 'height', {
-        //   get: d => {
-        //     return node.height;
-        //   },
-        //   set: d => {
-        //     node.height = d;
-        //   }
-        // });
-
-        // nodes.push(r);
         nodes.push({
           id: node.id + i,
           name: node.id,
@@ -232,21 +205,19 @@ export default class OrCha {
           y: node.pos
         });
 
-        // this is the alternative to using hierarchies
-        // if (parent && parent != 'fakeRoot' + i)
-        //   links.push({
-        //     data: {
-        //       id: parent + node.id + i,
-        //       source: parent,
-        //       target: node.id + i
-        //     }
-        //   });
         if (node.prev) {
           for (let prev of node.prev) {
+            let type;
+            // long ditance link
+            if (node.data && node.data.edgeType == 'link') type = 'link';
+            // same stream
+            else if (prev.id == node.id) type = 'stream';
+            else type = 'link';
             links.push({
               id: prev.id + (i - 1) + node.id + i,
               source: prev.id + (i - 1),
-              target: node.id + i
+              target: node.id + i,
+              type
             });
           }
         }
@@ -285,7 +256,9 @@ export default class OrCha {
     // add inbetween nodes
     if (link.end - link.start > 1) {
       for (let t = +link.start + 1; t < link.end; t++) {
-        this._streamData.addNode(t, link.name, 1);
+        this._streamData.addNode(t, link.name, undefined, undefined, {
+          edgeType: 'link'
+        });
       }
       this._streamData.addNext(link.start, link.from, link.name);
       last = link.name;
@@ -297,7 +270,9 @@ export default class OrCha {
     } else {
       // stream attaches to the other stream
       let linkEnd = link.name + 'port';
-      this._streamData.addNode(link.end, linkEnd);
+      this._streamData.addNode(link.end, linkEnd, undefined, undefined, {
+        edgeType: 'link'
+      });
       this._streamData.addParent(link.end, linkEnd, link.to);
       this._streamData.addNext(link.end - 1, last, linkEnd);
     }
@@ -347,9 +322,9 @@ export default class OrCha {
       this._streamData._timesteps[t].tree.dataSize = 0;
     for (let node of this._graphData.nodes) {
       let nodes = this._streamData._timesteps[node.time];
-      nodes.references[node.name].dataPos = node.y;
-      if (nodes.tree.dataSize < node.y + node.height)
-        nodes.tree.dataSize = node.y + node.height;
+      nodes.references[node.name].dataPos = node.y - node.height / 2;
+      if (nodes.tree.dataSize < node.y + node.height / 2)
+        nodes.tree.dataSize = node.y + node.height / 2;
     }
     this._streamData.finalize();
     this._stream.data(this._streamData);
