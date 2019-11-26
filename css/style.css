@@ -121,10 +121,24 @@ body {
 
 .tickCenter,
 .tickTop {
-  opacity: 0.8;
+  opacity: 0.95;
 }
 
 .tickCenter {
+  fill: rgb(238, 238, 238);
+}
+.tickCenter.odd {
+  fill: rgb(243, 240, 215);
+}
+
+.tickTop {
+  fill: rgb(175, 183, 180);
+}
+.tickTop.odd {
+  fill: rgb(187, 145, 154);
+}
+
+/* .tickCenter {
   fill: rgb(120, 160, 235);
 }
 .tickCenter.odd {
@@ -136,8 +150,9 @@ body {
 }
 .tickTop.odd {
   fill: rgb(214, 83, 127);
-}
+} */
 
+/* 
 .tickCenter {
   fill: rgb(110, 110, 110);
 }
@@ -150,4 +165,4 @@ body {
 }
 .tickTop.odd {
   fill: rgb(223, 118, 69);
-}
+} */

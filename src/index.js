@@ -156,8 +156,8 @@ function addInteractionLine(coords) {
 }
 function updateInteractionLine(coords) {
   d3.select('.interactionLine')
-    .attr('x2', coords[0])
-    .attr('y2', coords[1] + 2);
+    .attr('x2', coords[0] + 2)
+    .attr('y2', coords[1]);
 }
 
 function onStreamDragStarted() {

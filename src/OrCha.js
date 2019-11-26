@@ -29,8 +29,10 @@ export default class OrCha {
           textAnchor: 'start'
         }
       ],
-      margin: { top: 40, bottom: 20, left: 20, right: 20 }
+      margin: { top: 40, bottom: 20, left: 20, right: 20 },
+      filterMode: 'accurate'
     });
+    this._stream.filters([{ type: 'art' }]);
     this._stream.proportion = 1;
     this._streamData;
     this._graphData;
@@ -142,7 +144,7 @@ export default class OrCha {
         let side;
         if (tag.type == 'upper' || tag.type == 'lower') side = tag.type;
         else side = Math.random() < 0.5 ? 'lower' : 'upper';
-
+        // let side = 'lower';
         streamTags[tag.stream][side].push(tag);
       }
     }
@@ -210,6 +212,8 @@ export default class OrCha {
             let type;
             // long ditance link
             if (node.data && node.data.edgeType == 'link') type = 'link';
+            else if (!prev.id.startsWith('tag') && node.id.startsWith('tag'))
+              type = 'tag';
             // same stream
             else if (prev.id == node.id) type = 'stream';
             else type = 'link';
@@ -279,19 +283,29 @@ export default class OrCha {
   }
 
   _addTagNode(tag) {
-    let tagLengthHalf = 2;
-    for (let t = tag.time - tagLengthHalf; t < +tag.time + tagLengthHalf; t++) {
-      this._streamData.addNode(t, tag.name, 1, undefined, {
+    let tagLength = 6;
+    let size = [3, 6, 7, 7, 6, 3];
+    let i = 0;
+    for (let t = tag.time - tagLength / 2; t < +tag.time + tagLength / 2; t++) {
+      this._streamData.addNode(t, tag.name, size[i], undefined, {
         label: tag.text,
         color: tag.color
       });
       if (tag.type == 'inner')
         this._streamData.addParent(t, tag.name, tag.stream);
+      i++;
     }
   }
 
   _addTagLink(tag) {
     this._streamData.addNext(tag.time - 1, tag.stream, tag.name);
+    // instead of merge, attach to tags
+    // let linkEnd = tag.name + 'port';
+    // this._streamData.addNode(tag.time, linkEnd, undefined, undefined, {
+    //   // edgeType: 'link'
+    // });
+    // this._streamData.addParent(tag.time, linkEnd, tag.name);
+    // this._streamData.addNext(tag.time - 1, tag.stream, linkEnd);
   }
 
   // expect stream values to be sorted

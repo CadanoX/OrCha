@@ -59,6 +59,15 @@ export default class MyForce {
   set linkDistanceStream(value) {
     this._sim.force('forceLinkStream').distance(value);
   }
+  set linkForcePort(value) {
+    this._sim.force('forceTag').strength(value);
+  }
+  set linkIterationsPort(value) {
+    this._sim.force('forceTag').iterations(value);
+  }
+  set linkDistancePort(value) {
+    this._sim.force('forceTag').distance(value);
+  }
   set linkForce(value) {
     this._sim.force('forceLink').strength(value);
   }
@@ -107,15 +116,27 @@ export default class MyForce {
       d3
         .forceLink(data.links.filter(d => d.type == 'link'))
         .id(d => d.id)
-        .strength(0.1)
+        .strength(0.5)
         .iterations(1)
         .distance(0)
     );
 
     this._sim.force(
+      'forceTag',
+      d3
+        .forceLink(data.links.filter(d => d.type == 'tag'))
+        .id(d => d.id)
+        .strength(0.1)
+        .iterations(2)
+        .distance(20)
+    );
+
+    this._sim.force(
       'forcePort',
       d3
-        .forceLink(data.links.filter(d => d.id.includes('port')))
+        .forceLink(
+          data.links.filter(d => !d.id.includes('tag') && d.id.includes('port'))
+        )
         .id(d => d.id)
         .strength(1)
         .iterations(20)
