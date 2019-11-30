@@ -66,7 +66,7 @@ Regionalists,1930,VisualArt,1931
 
 
 
-stream,time,text,type,format,size
+stream,time,text,type,size
 Literature,1899,(The Jewish) Forward,upper
 Literature,1907,Mother Earth,upper
 Literature,1913,The Glebe,upper

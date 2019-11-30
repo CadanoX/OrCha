@@ -16,6 +16,7 @@ export default class OrCha {
     this._callback = readyFunction;
     this._stream = new SplitStream(streamContainer, {
       mirror: true,
+      showLabels: true,
       offset: 'zero',
       transparentRoot: true,
       yPadding: 1,
@@ -137,7 +138,7 @@ export default class OrCha {
     for (let tag of d.tags) {
       tag.name = 'tag' + i++;
       tag.color = this.__getDarkerColor(streamColors[tag.stream]);
-      if (tag.type == 'inner') innerTags.push(tag);
+      if (tag.type == 'inner' || tag.type == 'on') innerTags.push(tag);
       else {
         if (!streamTags[tag.stream])
           streamTags[tag.stream] = { lower: [], upper: [] };
@@ -283,17 +284,42 @@ export default class OrCha {
   }
 
   _addTagNode(tag) {
-    let tagLength = 6;
-    let size = [3, 6, 7, 7, 6, 3];
-    let i = 0;
-    for (let t = tag.time - tagLength / 2; t < +tag.time + tagLength / 2; t++) {
+    if (!tag.size) tag.size = 13; // font Size
+    let magicFontSizeAdjustment = 0.15;
+    let magicFontWidthAdjustment = 25;
+    let labels = tag.text.split('/');
+    let longestLabelChars = Math.max(...labels.map(d => d.length));
+    let tagLength = Math.ceil(
+      (longestLabelChars * tag.size) / magicFontWidthAdjustment
+    );
+    // always use an even number of nodes for tags
+    if (tagLength % 2 != 0) tagLength++;
+    let tagHeight = tag.size * labels.length * magicFontSizeAdjustment;
+
+    // rectangular shape
+    let size = Array(tagLength + 1).fill(tagHeight);
+    if (tag.type == 'outer' || tag.type == 'upper' || tag.type == 'lower')
+      // diamond shape
+      // size = size.map(
+      //   (d, i) => 2 * d * (1 - Math.abs(i - tagLength / 2) / (tagLength / 2))
+      // );
+      // elliptic shape
+      size = size.map(
+        (d, i) =>
+          2 *
+          d *
+          Math.max(0.3, Math.cos(Math.abs(i - tagLength / 2) / (tagLength / 2)))
+      );
+
+    for (let i = 0; i <= tagLength; i++) {
+      let t = tag.time - tagLength / 2 + i;
       this._streamData.addNode(t, tag.name, size[i], undefined, {
-        label: tag.text,
-        color: tag.color
+        labels,
+        color: tag.color,
+        fontSize: tag.size
       });
-      if (tag.type == 'inner')
+      if (tag.type == 'inner' || tag.type == 'on')
         this._streamData.addParent(t, tag.name, tag.stream);
-      i++;
     }
   }
 

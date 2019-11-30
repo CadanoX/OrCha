@@ -92,12 +92,6 @@ function getYear(x) {
 function activateInteractions() {
   let tooltips = orcha._stream._tooltipContainer;
   let streamCon = orcha._stream._pathContainer;
-  let background = orcha._stream._zoomContainer
-    .insert('rect', ':first-child')
-    .attr('width', orcha._stream._container.clientWidth)
-    .attr('height', orcha._stream._container.clientHeight)
-    .attr('fill', 'white')
-    .attr('fill-opacity', 0);
 
   tooltips.selectAll('*').remove();
   // add line to show current time
@@ -250,6 +244,8 @@ window.onTagNameCancel = () => {
 };
 window.onTagNameOk = () => {
   currentTag.text = popupTag.querySelector('input').value;
+  // remove commata because we use a CSV
+  currentTag.text = currentTag.text.replace(/,/g, ';');
   addTag(currentTag);
   popupTag.style.visibility = 'hidden';
   popupTag.querySelector('input').value = '';
