@@ -19,7 +19,7 @@ export default class OrCha {
       showLabels: true,
       offset: 'zero',
       transparentRoot: true,
-      yPadding: 1,
+      // yPadding: 1,
       axes: [
         {
           position: 'bottom',
@@ -40,7 +40,6 @@ export default class OrCha {
     this._graphLayout = new MyForce({
       callbackTick: this._onForceUpdate.bind(this),
       callbackEnd: this._onForceEnd.bind(this)
-      // range: [undefined, streamContainer.clientHeight]
     });
 
     if (graphContainer) this._graph = new MyGraph(graphContainer);
@@ -66,11 +65,20 @@ export default class OrCha {
   }
 
   _setData(d) {
+    // convert CSV to SplitStream data format
     this._inputToStream(d);
+    // apply the positioning from the previous force layout
+    this._applyNodePositionsToStream();
+    // increase the free space between nodes
+    this._multiplyRootSize(2);
+    // draw the stream with its new data
     this._stream.data(this._streamData);
+    // start a new force calculation
     this._graphData = this._streamDataToGraph(this._streamData);
     this._graphLayout.data(this._graphData);
-    this._graphLayout.forceYValue = this._stream._maxValue;
+    // move nodes to the middle of the div
+    this._graphLayout.forceYValue = this._stream._maxValue / 2;
+    this._graphLayout.range = [undefined, this._stream._maxValue];
     this._graphLayout.run();
 
     this._makeFancyTimeline();
@@ -138,6 +146,7 @@ export default class OrCha {
     for (let tag of d.tags) {
       tag.name = 'tag' + i++;
       tag.color = this.__getDarkerColor(streamColors[tag.stream]);
+      if (!tag.shape) tag.shape = tag.type == 'on' ? 'rect' : 'rect';
       if (tag.type == 'inner' || tag.type == 'on') innerTags.push(tag);
       else {
         if (!streamTags[tag.stream])
@@ -213,6 +222,9 @@ export default class OrCha {
             let type;
             // long ditance link
             if (node.data && node.data.edgeType == 'link') type = 'link';
+            // labels
+            else if (node.data && node.data.edgeType == 'label') type = 'label';
+            // tags
             else if (!prev.id.startsWith('tag') && node.id.startsWith('tag'))
               type = 'tag';
             // same stream
@@ -285,7 +297,7 @@ export default class OrCha {
 
   _addTagNode(tag) {
     if (!tag.size) tag.size = 13; // font Size
-    let magicFontSizeAdjustment = 0.15;
+    let magicFontSizeAdjustment = 0.2;
     let magicFontWidthAdjustment = 25;
     let labels = tag.text.split('/');
     let longestLabelChars = Math.max(...labels.map(d => d.length));
@@ -296,30 +308,43 @@ export default class OrCha {
     if (tagLength % 2 != 0) tagLength++;
     let tagHeight = tag.size * labels.length * magicFontSizeAdjustment;
 
-    // rectangular shape
-    let size = Array(tagLength + 1).fill(tagHeight);
-    if (tag.type == 'outer' || tag.type == 'upper' || tag.type == 'lower')
-      // diamond shape
-      // size = size.map(
-      //   (d, i) => 2 * d * (1 - Math.abs(i - tagLength / 2) / (tagLength / 2))
-      // );
-      // elliptic shape
-      size = size.map(
+    // start with rectangular shape
+    let rectSize = Array(tagLength + 1).fill(tagHeight);
+    let shapeSize = rectSize;
+    if (tag.shape == 'diamond')
+      shapeSize = rectSize.map(
+        (d, i) => 2 * d * (1 - Math.abs(i - tagLength / 2) / (tagLength / 2))
+      );
+    else if (tag.shape == 'ellipse')
+      shapeSize = rectSize.map(
         (d, i) =>
-          2 *
           d *
-          Math.max(0.3, Math.cos(Math.abs(i - tagLength / 2) / (tagLength / 2)))
+          Math.max(
+            0.5,
+            1.5 *
+              Math.cos(
+                ((Math.PI / 2) * Math.abs(i - tagLength / 2)) / (tagLength / 2)
+              )
+          )
       );
 
+    // create connected nodes to include the text
+    let labelName = 'label' + tag.name;
     for (let i = 0; i <= tagLength; i++) {
       let t = tag.time - tagLength / 2 + i;
-      this._streamData.addNode(t, tag.name, size[i], undefined, {
-        labels,
-        color: tag.color,
-        fontSize: tag.size
+      this._streamData.addNode(t, tag.name, shapeSize[i], undefined, {
+        color: tag.color
       });
       if (tag.type == 'inner' || tag.type == 'on')
         this._streamData.addParent(t, tag.name, tag.stream);
+      // create an inner rectangular shape which is not influenced by links
+      this._streamData.addNode(t, labelName, rectSize[i], undefined, {
+        labels,
+        color: 'transparent',
+        fontSize: tag.size,
+        edgeType: 'label'
+      });
+      this._streamData.addParent(t, labelName, tag.name);
     }
   }
 
@@ -357,17 +382,39 @@ export default class OrCha {
   }
 
   _onForceUpdate() {
+    // draw graph with new positions
     if (this._graph) this._graph.data(this._graphData);
-    for (let t in this._streamData._timesteps)
-      this._streamData._timesteps[t].tree.dataSize = 0;
+    // draw stream with new positions
+    this._applyNodePositionsToStream();
+  }
+
+  _applyNodePositionsToStream() {
+    if (!this._graphData) return;
+
+    // reset the root size
+    // for (let t in this._streamData._timesteps)
+    //   this._streamData._timesteps[t].tree.dataSize = 0;
+    // apply postiions for all nodes
     for (let node of this._graphData.nodes) {
       let nodes = this._streamData._timesteps[node.time];
-      nodes.references[node.name].dataPos = node.y - node.height / 2;
-      if (nodes.tree.dataSize < node.y + node.height / 2)
-        nodes.tree.dataSize = node.y + node.height / 2;
+      if (nodes) {
+        let streamNode = nodes.references[node.name];
+        if (streamNode) {
+          streamNode.dataPos = node.y - node.height / 2;
+          // increase the root size to contain all nodes
+          // if (nodes.tree.dataSize < node.y + node.height / 2)
+          //   nodes.tree.dataSize = node.y + node.height / 2;
+        }
+      }
     }
+
     this._streamData.finalize();
     this._stream.data(this._streamData);
+  }
+
+  _multiplyRootSize(value) {
+    let times = this._streamData._timesteps;
+    for (let t in times) times[t].tree.dataSize *= value;
   }
 
   _onForceEnd() {

@@ -22,6 +22,7 @@ var currentTag = {};
 var currentDrag = {};
 var dragTimeStart;
 var linkInQueue;
+let dragStartCoords = [0, 0];
 
 const example = {
   streams: `name,start,end,color,values
@@ -135,7 +136,8 @@ function activateInteractions() {
 
 function updateLine(id, coords) {
   let line = d3.select('#' + id);
-  line.attr('transform', d => 'translate(' + (coords[0] + 2) + ',0)');
+  let diffX = coords[0] > dragStartCoords[0] ? -2 : 2;
+  line.attr('transform', d => 'translate(' + (coords[0] + diffX) + ',0)');
   line.select('text').text(getYear(coords[0]));
 }
 
@@ -143,20 +145,34 @@ function addInteractionLine(coords) {
   orcha._stream._zoomContainer
     .append('line')
     .classed('interactionLine', true)
-    .attr('x1', coords[0])
-    .attr('y1', coords[1])
-    .attr('x2', coords[0])
-    .attr('y2', coords[1]);
+    .attr('x1', coords[0] - 2)
+    .attr('y1', coords[1] - 2)
+    .attr('x2', coords[0] - 2)
+    .attr('y2', coords[1] - 2);
 }
 function updateInteractionLine(coords) {
-  d3.select('.interactionLine')
-    .attr('x2', coords[0] + 2)
-    .attr('y2', coords[1]);
+  let line = d3.select('.interactionLine');
+  if (coords[0] < dragStartCoords[0]) {
+    line.attr('x1', dragStartCoords[0] + 2);
+    line.attr('x2', coords[0] + 2);
+  } else {
+    line.attr('x1', dragStartCoords[0] - 2);
+    line.attr('x2', coords[0] - 2);
+  }
+
+  if (coords[1] < dragStartCoords[1] + 2) {
+    line.attr('y1', dragStartCoords[1] + 2);
+    line.attr('y2', coords[1] + 2);
+  } else {
+    line.attr('y1', dragStartCoords[1] - 2);
+    line.attr('y2', coords[1] - 2);
+  }
 }
 
 function onStreamDragStarted() {
   dragTimeStart = Date.now();
   let coords = d3.mouse(this);
+  dragStartCoords = coords;
   currentDrag.startTime = getYear(coords[0]);
   let stream = d3.event.sourceEvent.path[0];
   // remove "stream" and "chart from the ID"

@@ -23,6 +23,10 @@ export default class MyForce {
     return d == null ? this._data : (this._setData(d), this);
   }
 
+  set range(range) {
+    this._opts.range = range;
+  }
+
   set velocityDecay(value) {
     this._sim.velocityDecay(value);
   }
@@ -149,8 +153,10 @@ export default class MyForce {
 
     this._data.nodes.forEach(function(d) {
       // keep nodes in window bounds
-      if (range[0]) d.x = Math.max(0, Math.min(range[0] - d.width / 2, d.x));
-      if (range[1]) d.y = Math.max(0, Math.min(range[1] - d.height / 2, d.y));
+      if (range[0])
+        d.x = Math.max(d.width / 2, Math.min(range[0] - d.width / 2, d.x));
+      if (range[1])
+        d.y = Math.max(d.height / 2, Math.min(range[1] - d.height / 2, d.y));
 
       // force nodes back into their parent elements
       // TODO: this is super inefficient. store data in an object with IDs instead
