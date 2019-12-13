@@ -34,13 +34,16 @@ export default class OrCha {
       filterMode: 'accurate'
     });
     this._stream.filters([{ type: 'art' }]);
-    this._stream.proportion = 1;
+    this._stream.proportion = 0.99;
     this._streamData;
     this._graphData;
     this._graphLayout = new MyForce({
       callbackTick: this._onForceUpdate.bind(this),
       callbackEnd: this._onForceEnd.bind(this)
     });
+
+    // stores nodes with times when they merge into other streams
+    this._mergePositions = [];
 
     if (graphContainer) this._graph = new MyGraph(graphContainer);
 
@@ -145,7 +148,8 @@ export default class OrCha {
     let i = 0;
     for (let tag of d.tags) {
       tag.name = 'tag' + i++;
-      tag.color = this.__getDarkerColor(streamColors[tag.stream]);
+      if (tag.type == 'on') tag.color = 'transparent';
+      else tag.color = this.__getDarkerColor(streamColors[tag.stream]);
       if (!tag.shape) tag.shape = tag.type == 'on' ? 'rect' : 'rect';
       if (tag.type == 'inner' || tag.type == 'on') innerTags.push(tag);
       else {
@@ -188,8 +192,10 @@ export default class OrCha {
     // set fakeRoot to window height
   }
 
+  // create a graph node for all nodes in all timesteps
+  // create links based on their previous node references
   _streamDataToGraph(data) {
-    let y = this._stream._streamData._yScale;
+    this._mergePositions = [];
     let nodes = [];
     let links = [];
     for (let i in data._timesteps) {
@@ -219,6 +225,14 @@ export default class OrCha {
 
         if (node.prev) {
           for (let prev of node.prev) {
+            //find locations at which streams merge
+            if (prev.id != node.id && node.id)
+              this._mergePositions.push({
+                node: node,
+                time: i,
+                prev: prev
+              });
+
             let type;
             // long ditance link
             if (node.data && node.data.edgeType == 'link') type = 'link';
@@ -296,9 +310,11 @@ export default class OrCha {
   }
 
   _addTagNode(tag) {
+    if (!tag.text) return;
     if (!tag.size) tag.size = 13; // font Size
-    let magicFontSizeAdjustment = 0.2;
+    let magicFontSizeAdjustment = 0.25;
     let magicFontWidthAdjustment = 25;
+    tag.text = tag.text.toUpperCase();
     let labels = tag.text.split('/');
     let longestLabelChars = Math.max(...labels.map(d => d.length));
     let tagLength = Math.ceil(
@@ -386,6 +402,7 @@ export default class OrCha {
     if (this._graph) this._graph.data(this._graphData);
     // draw stream with new positions
     this._applyNodePositionsToStream();
+    // this._hideMergePositions();
   }
 
   _applyNodePositionsToStream() {
@@ -410,6 +427,63 @@ export default class OrCha {
 
     this._streamData.finalize();
     this._stream.data(this._streamData);
+  }
+
+  _hideMergePositions() {
+    const x = this._stream._streamData.xScale;
+    const dx = x(1) - x(0);
+    const y = this._stream._streamData.yScale;
+    // get current render position of merge nodes
+    for (let merge of this._mergePositions) {
+      merge.size = y(merge.node.y1) - y(merge.node.y0);
+      merge.pos = y(merge.node.y0);
+      merge.x = x(merge.node.x - 0.5);
+      let stream = this._stream._svg.select(
+        '#stream' + merge.prev.id + 'chart'
+      );
+      stream.attr('mask', 'url(#mask' + merge.prev.id + ')');
+    }
+    let defs = this._stream._svg.select('defs');
+    // clear previous masks (WARNING: clips are also removed)
+    // defs.html('');
+    let masksByStream = d3
+      .nest()
+      .key(d => d.prev.id)
+      .entries(this._mergePositions);
+    let masks = defs
+      .selectAll('mask')
+      .data(masksByStream, d => 'mask' + d.key)
+      .join(
+        enter => {
+          let masks = enter.append('mask').attr('id', d => 'mask' + d.key);
+          masks
+            .append('rect')
+            .attr('x', 0)
+            .attr('y', 0)
+            .attr('width', '100%')
+            .attr('height', '100%')
+            .attr('fill', 'white');
+          return masks;
+        },
+        update => update,
+        exit => exit.remove()
+      );
+    masks
+      .selectAll('rect:not(:first-child)')
+      .data(d => d.values, d => d.node.id)
+      .join(
+        enter => {
+          enter
+            .append('rect')
+            .attr('width', 1.5 * dx)
+            .attr('x', d => d.x)
+            .attr('fill', 'black');
+        },
+        update => update,
+        exit => exit.remove()
+      )
+      .attr('y', d => d.pos)
+      .attr('height', d => d.size);
   }
 
   _multiplyRootSize(value) {

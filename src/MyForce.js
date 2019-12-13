@@ -14,7 +14,7 @@ export default class MyForce {
     // this._sim.stop();
     // this._sim.alpha(0);
     this._sim.velocityDecay(0.1); // default 0.4
-    this._sim.alphaDecay(1); // default 0.028
+    this._sim.alphaDecay(0.125); // default 0.028
     this._sim.on('tick', () => this._tick());
     if (this._opts.callbackEnd) this._sim.on('end', this._opts.callbackEnd);
   }

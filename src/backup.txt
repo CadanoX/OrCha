@@ -66,13 +66,15 @@ Regionalists,1930,VisualArt,1931
 
 
 
-stream,time,text,type,size
-Literature,1899,(The Jewish) Forward,upper
-Literature,1907,Mother Earth,upper
-Literature,1913,The Glebe,upper
+stream,time,text,type,size,shape
+Literature,1899,(The Jewish)/Forward,upper
+Literature,1907,Mother/Earth,upper,30
+Literature,1913,The/Glebe,upper
 Literature,1915,Other,upper
 Literature,1949,San Remo,lower
-Theater,1924,Cherry Lane Theater,inner
-Literature,1912,The Masses,inner
-Radical,1914,Paterson Mill Strike Pageant
-Radical,1914,The Masses Croud
+Theater,1924,Cherry/Lane/Theater,inner
+Literature,1912,The/Masses,inner
+Radical,1914,Paterson/Mill Strike/Pageant
+Radical,1914,The Masses/Croud,inner
+VisualArt,1925,Hello my friend/I am a test label,on
+VisualArt,1960,hello;/ my test;/and other/testfdsf/fsf things,on,20

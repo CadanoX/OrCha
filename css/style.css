@@ -27,15 +27,53 @@ body {
 #editors {
   display: flex;
   flex-direction: row;
+  justify-content: space-evenly;
   /* float: left; */
   width: 100%;
   height: 20%;
 }
-#editor-streams,
-#editor-links,
-#editor-tags {
-  width: 33%;
+
+#editors > div {
+  display: flex;
+  flex-direction: column;
+  width: 32%;
 }
+#editors > div > * {
+  width: 100%;
+  color: #eee;
+}
+
+#editors span {
+  text-transform: uppercase;
+  font-weight: bold;
+}
+#editors span:first-child {
+  text-align: center;
+}
+#editors textarea {
+  padding: 2px 5px 2px 5px;
+  background-color: #333;
+  border: 0;
+  height: 100%;
+  white-space: pre;
+  resize: none;
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  padding-right: 2px;
+}
+
+::-webkit-scrollbar-track {
+  -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+  -webkit-box-shadow: inset 0 0 6px rgba(255, 255, 255, 0.5);
+}
+
 #charts {
   width: 100%;
   height: 80%;
@@ -103,8 +141,8 @@ body {
 #orientationLine,
 #orientationLine2 {
   stroke-width: 1;
-  stroke: lightgrey;
-  color: lightgrey;
+  stroke: grey;
+  color: grey;
 }
 
 #orientationLine text {
@@ -115,8 +153,23 @@ body {
   visibility: hidden;
 }
 
+#sizeSlider > rect {
+  fill: #888;
+  stroke: black;
+}
+#sizeSlider > text {
+  color: white;
+  text-anchor: middle;
+  dominant-baseline: hanging;
+  font-size: bold;
+}
+
 #options {
   color: lightgrey;
+}
+
+text {
+  pointer-events: none;
 }
 
 .tickCenter,
