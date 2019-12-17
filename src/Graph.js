@@ -52,7 +52,7 @@ export default class MyGraph {
           enter
             .append('rect')
             .attr('width', 2.5)
-            .attr('height', d => y(d.height))
+            .attr('height', d => d.height * 10)
             .attr('x', d => x(d.x))
             .attr('y', d => y(d.y))
             .attr('fill', d => d.color),

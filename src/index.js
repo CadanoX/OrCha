@@ -28,88 +28,79 @@ let sizeSliderHeight = 15;
 let sizeSliderWidth = 30;
 
 const editorHeader = {
-  streams: 'name,start,end,color,values',
+  streams: 'name,start,end,color,values,parent',
   links: 'from,start,to,end,merge',
   tags: 'stream,time,text,type,size,shape'
 };
 const example = {
-  streams: `UptownGalleries,1954,1973,blue
-Downtown,1972,1995,purple,
-Literature,1896,2000,lightblue,1896/20-1900/20-1904/12-2000/10
-LostGen,1921,1938,orange
-Jackton,1956,1959,orange
-Cassavetes,1953,1978,purple
-JohnReed,1912,1915,blue,1912/2-1915/2
-Vaudeville,1898,1933,#D77,1998/8-1933/4
-OffBway,1955,1967,orange
-Theater,1898,2000,#D77,1998/8-1910/8-1922/16-1935/8-1958/16-1970/10
-Dance,1899,2000,#A88,1899/6-1908/2-1933/2-1935/4-2000/4
-Film,1942,2000,purple
-Radical,1899,1953,#07E,1899/10-1915/5-1953/2
-VisualArt,1898,1964,#C46,1898/10-1910/10-1918/20-1928/20-1933/8-1940/10-1952/26-1958/26-1964/15
-NewYorkSchool,1943,1957,orange,1943/1-1949/8-1952/18-1954/16,VisualArt
-Burroughs,1971,1973,orange
-CircleSquare,1951,1954,orange,,Theater
-TheAnthology,1971,1973,orange
-ElectArts,1972,1974,orange
-Performance,1970,2000,orange
-Regionalists,1921,1930,#C46
-Music,1905,2000,#999,1905/8-1910/8-1911/4-1987/4-1988/8-2000/12
-HotStyleJazz,1912,1987,#BBB,1911/4
-TinPanAlley,1907,2000,purple,1950/1-1965/10
-Weavers,1944,1961,purple
-FolkRevival,1955,1961,orange,,Weavers
-FolkRevival2,1962,1988,orange,1961/3-1965/5-1967/10-1968/8,TinPanAlley
-ClassicRock,1974,1978,orange
-HipHop,1976,1988,orange
-MainstreamJazz,1974,1993,orange`,
-  links: `Vaudeville,1933,Theater,,merge
-Radical,1903,Literature,1907
-Literature,1919,tag5,1923
-tag2,1914,tag3,,merge
-Literature,1910,JohnReed,1912
-Cassavetes,1978,Downtown,,merge
-JohnReed,1912,tag6
-JohnReed,1914,tag7
-tag7,1913,tag8
-Radical,1906,JohnReed,1913
-Theater,1985,Literature,1989
-Literature,1920,LostGen,1921,merge
-Literature,1955,Jackton,,merge
-Literature,1970,Burroughs,,merge
-Film,1987,Downtown,1992
-Film,1970,TheAnthology,,merge
-Film,1971,ElectArts,,merge
-CircleSquare,1954,OffBway,,merge
-OffBway,1966,UptownGalleries,1969
-Theater,1969,Performance,,merge
-Music,1911,HotStyleJazz,,merge
-HotStyleJazz,1987,Music,,merge
+  streams: `UptownGalleries,1954,1973,#6cabd6,1954/4-1970/4-1971/2-1973/2
+  Downtown,1972,1995,#d96e8c,1977/1-1983/3-1995/3
+  Literature,1896,2000,#bed2dd,1896/17-1900/17-1901/16-1903/13-1904/11-1910/11-1912/12-1916/11-1917/10-2000/10
+  LostGen,1921,1938,#bed2dd,1921/3-1938/3
+  Jackton,1956,1959,#bed2dd
+  Cassavetes,1953,1978,#d96e8c
+  JohnReed,1912,1915,blue,1912/2-1915/2
+  Vaudeville,1898,1933,#dd6d6c,1898/7-1933/4-1998/8
+  Theater,1898,2000,#dd6d6c,1898/7-1910/8-1922/16-1935/8-1958/16-1970/8-2000/8
+  OffBway,1955,1967,#A22,1950/5-1956/5,Theater
+  Dance,1899,2000,#bfafba,1899/6-1908/2-1933/2-1935/4-2000/4
+  Film,1942,2000,purple,1942/6-2000/4
+  Radical,1899,1953,#5e95f2,1899/10-1915/5-1918/1-1922/1-1935/3-1953/1
+  VisualArt,1898,1964,#ed7382,1898/10-1910/10-1918/20-1928/20-1933/8-1940/10-1952/26-1958/26-1964/15
+  NewYorkSchool,1943,1957,orange,1943/1-1949/8-1952/18-1954/16,VisualArt
+  Performance,1970,2000,#D77,1970/7-1987/14-1990/7-2000/4
+  Regionalists,1921,1930,#C46
+  Music,1905,2000,#b0a0aa,1905/8-1910/8-1911/4-1987/4-1988/8-2000/12
+  HotStyleJazz,1912,1987,#b0a0aa,1911/4
+  TinPanAlley,1907,2000,purple,1950/1-1965/10
+  Weavers,1944,1961,purple,1944/2-1961/3
+  FolkRevival,1955,1961,#DAD,,Weavers
+  FolkRevival2,1962,1988,#DAD,1961/3-1965/5-1967/10-1968/8,TinPanAlley
+  ClassicRock,1974,1978,purple,1974/6-1978/4
+  HipHop,1976,1988,purple,1980/3-1988/3
+  MainstreamJazz,1974,1993,#999,1974/3-1993/3
+  Lifestyle,1902,1986,#b38f55,1902/2-1955/2-1957/8-1973/8-1976/6-1986/5`,
+  links: `
+Literature,1920,LostGen,,true
+Literature,1955,Jackton,,true
+Cassavetes,1978,Downtown,,true
+Vaudeville,1933,Theater,,true
+Theater,1969,Performance,,true
+Music,1911,HotStyleJazz,,true
+HotStyleJazz,1987,Music,,true
 TinPanAlley,1907,Music
-Weavers,1961,TinPanAlley,,merge
-FolkRevival,1961,FolkRevival2,1962,merge
-TinPanAlley,1973,ClassicRock,,merge
-ClassicRock,1975,HipHop,,merge
-HotStyleJazz,1973,MainstreamJazz,,merge
-Regionalists,1930,VisualArt,1931`,
-  tags: `Literature,1899,(The Jewish)/Forward,upper
-Literature,1907,Mother/Earth,upper,30
-Literature,1913,The/Glebe,upper
-Literature,1915,Other,upper
-Literature,1949,San Remo,lower
-Theater,1924,Cherry/Lane/Theater,inner
-Literature,1912,The/Masses,inner
+Weavers,1961,TinPanAlley,,true
+FolkRevival,1961,FolkRevival2,1962,true
+TinPanAlley,1973,ClassicRock,,true
+ClassicRock,1975,HipHop,,true
+HotStyleJazz,1973,MainstreamJazz,,true`,
+  tags: `Literature,1905,Literature,on,25
+Literature,1899,(The Jewish)/Forward
+Literature,1913,The/Glebe
+Literature,1915,Other
+Literature,1949,San Remo
+Theater,1924,Cherry/Lane/Theater,in
+Literature,1912,The/Masses,in
 Radical,1914,Paterson/Mill Strike/Pageant
-Radical,1914,The Masses/Croud,inner
-VisualArt,1925,Hello my friend/I am a test label,on
-VisualArt,1960,hello;/ my test;/and other/testfdsf/fsf things,on,20`
+Radical,1914,The Masses/Croud
+LostGen,1933,Lost Generation,on
+OffBway,1952,Circle/in the/Square,in
+OffBway,1957,--> Off Bway,on
+OffBway,1958,Shakespear Workshop,on,9
+Dance,1902,Dance,on,20
+Theater,1904,Theater,on,25
+Vaudeville,1904,Vaudeville +/Yiddish Theater,on
+Film,1947,Film,on,20
+VisualArt,1903,Visual Art,on,20
+Performance,1977,Performance Art,on,18
+Performance,1982,PS 122,in,
+Lifestyle,1913,NY Tribune:/"Who's who in N.Y.'s/Bohemia"`
 };
 
 document.addEventListener('DOMContentLoaded', async function(event) {
   orcha = new OrCha(
     document.querySelector('#chart'),
-    undefined,
-    // document.querySelector('#d3graph'),
+    document.querySelector('#d3graph'),
     onGraphReady
   );
   // cyto = new myCyto(document.querySelector('#graph'), onGraphUpdated);
@@ -370,7 +361,9 @@ function onStreamDragStarted() {
   currentDrag.startName = stream.classList.contains('stream')
     ? stream.id.slice(6, -5)
     : undefined;
+
   if (currentDrag.startName == 'fakeRoot') currentDrag.startName = undefined;
+  else currentDrag.color = stream.getAttribute('fill');
 
   addInteractionLine(coords);
   updateLine('orientationLine2', coords);
@@ -487,31 +480,23 @@ function addTag(tag) {
 }
 
 function addStream(stream) {
-  // insert new stream
-  if (!stream.parent)
-    addToEditor(
-      'streams',
-      `\n${stream.name},${stream.startTime},${stream.endTime},orange`
-    );
-  // insert nested stream
-  else
-    addToEditor(
-      'streams',
-      `\n${stream.name},${stream.startTime},${stream.endTime},orange,,${stream.parent}`
-    );
+  if (!stream.color) stream.color = 'orange';
+  addToEditor(
+    'streams',
+    `\n${stream.name},${stream.startTime},${stream.endTime},${stream.color}`
+  );
+  if (stream.parent) addToEditor(`,${stream.parent}`);
 }
+
 function addLink(link, merge = false) {
-  if (!link.endTime)
-    addToEditor(
-      'links',
-      `\n${link.startName},${link.startTime},${link.endName},,`
-    );
-  else
-    addToEditor(
-      'links',
-      `\n${link.startName},${link.startTime},${link.endName},${link.endTime}`
-    );
-  if (merge) addToEditor('links', 'merge');
+  addToEditor(
+    'links',
+    `\n${link.startName},${link.startTime},${link.endName},`
+  );
+
+  if (link.endTime) addToEditor('links', link.endTime);
+  else addToEditor('links', ',');
+  if (merge) addToEditor('links', 'true');
 }
 
 function addToEditor(type, text) {

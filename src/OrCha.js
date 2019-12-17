@@ -10,9 +10,11 @@ import {
 import MyForce from './MyForce';
 import MyGraph from './Graph';
 import { interpolateOranges } from 'd3-scale-chromatic';
+import { runInThisContext } from 'vm';
 
 export default class OrCha {
   constructor(streamContainer, graphContainer, readyFunction) {
+    this._streamContainer = streamContainer;
     this._callback = readyFunction;
     this._stream = new SplitStream(streamContainer, {
       mirror: true,
@@ -47,7 +49,11 @@ export default class OrCha {
 
     if (graphContainer) this._graph = new MyGraph(graphContainer);
 
+    this._rootSize = 15;
     this._streamSize = 1;
+    this._fontSize = 7;
+
+    this._stream._svg.attr('font-size', this._fontSize + 'px');
   }
 
   set streamSize(value) {
@@ -73,7 +79,16 @@ export default class OrCha {
     // apply the positioning from the previous force layout
     this._applyNodePositionsToStream();
     // increase the free space between nodes
-    this._multiplyRootSize(2);
+    //this._multiplyRootSize(2);
+    this._setRootSize(this._rootSize);
+    // this._drawSpaceHeight = document
+    //   .querySelector('svg > .zoom')
+    //   .getBBox().height;
+    this._drawSpaceHeight = document.querySelector(
+      'svg.secstream'
+    ).clientHeight;
+    this._drawSpaceWidth = document.querySelector('svg.secstream').clientWidth;
+
     // draw the stream with its new data
     this._stream.data(this._streamData);
     // start a new force calculation
@@ -81,7 +96,7 @@ export default class OrCha {
     this._graphLayout.data(this._graphData);
     // move nodes to the middle of the div
     this._graphLayout.forceYValue = this._stream._maxValue / 2;
-    this._graphLayout.range = [undefined, this._stream._maxValue];
+    this._graphLayout.range = [undefined, this._rootSize];
     this._graphLayout.run();
 
     this._makeFancyTimeline();
@@ -139,26 +154,28 @@ export default class OrCha {
       // TODO: inefficient, use object with id as key
       if (stream.parent) {
         let parent = d.streams.find(d => d.name == stream.parent);
-        if (parent) stream.color = this.__getDarkerColor(parent.color);
+        if (parent && !stream.color)
+          stream.color = this.__getDarkerColor(parent.color);
       }
       streamColors[stream.name] = stream.color;
     });
 
     // randomly position tags above or below their corresponding stream
+    // WARNING: with the current force layout this can not be guaranteed any longer
     let i = 0;
     for (let tag of d.tags) {
       tag.name = 'tag' + i++;
       if (tag.type == 'on') tag.color = 'transparent';
       else tag.color = this.__getDarkerColor(streamColors[tag.stream]);
       if (!tag.shape) tag.shape = tag.type == 'on' ? 'rect' : 'rect';
-      if (tag.type == 'inner' || tag.type == 'on') innerTags.push(tag);
+      if (tag.type == 'in' || tag.type == 'on') innerTags.push(tag);
       else {
         if (!streamTags[tag.stream])
           streamTags[tag.stream] = { lower: [], upper: [] };
         let side;
         if (tag.type == 'upper' || tag.type == 'lower') side = tag.type;
         else side = Math.random() < 0.5 ? 'lower' : 'upper';
-        // let side = 'lower';
+        // side = 'upper';
         streamTags[tag.stream][side].push(tag);
       }
     }
@@ -295,12 +312,12 @@ export default class OrCha {
       last = link.name;
     }
     // add ending
-    if (link.type == 'merge') {
+    if (link.merge == 'true') {
       // stream moves fluently into the other stream
       this._streamData.addNext(link.end - 1, last, link.to);
     } else {
       // stream attaches to the other stream
-      let linkEnd = link.name + 'port';
+      let linkEnd = link.name; // + 'port';
       this._streamData.addNode(link.end, linkEnd, undefined, undefined, {
         edgeType: 'link'
       });
@@ -311,19 +328,29 @@ export default class OrCha {
 
   _addTagNode(tag) {
     if (!tag.text) return;
-    if (!tag.size) tag.size = 13; // font Size
-    let magicFontSizeAdjustment = 0.25;
-    let magicFontWidthAdjustment = 25;
     tag.text = tag.text.toUpperCase();
-    let labels = tag.text.split('/');
-    let longestLabelChars = Math.max(...labels.map(d => d.length));
-    let tagLength = Math.ceil(
-      (longestLabelChars * tag.size) / magicFontWidthAdjustment
-    );
-    // always use an even number of nodes for tags
-    if (tagLength % 2 != 0) tagLength++;
-    let tagHeight = tag.size * labels.length * magicFontSizeAdjustment;
 
+    // convert em to px
+    if (!tag.size) tag.size = 1;
+    let fontSize = tag.size * this._fontSize;
+
+    let magicFontHeightAdjustment = this._rootSize / this._drawSpaceHeight;
+    let fontHeight = fontSize * magicFontHeightAdjustment;
+    let spacePerTimestep =
+      this._drawSpaceWidth / Object.keys(this._stream._data.timesteps).length;
+    let charWidth = (fontSize * 0.4) / spacePerTimestep;
+
+    // create a new line of text at each / symbol
+    let labels = tag.text.split('/');
+    let tagHeight = fontHeight * labels.length;
+
+    // calculate the required number of time nodes for the given label
+    let maxChars = Math.max(...labels.map(d => d.length));
+    let tagLength = Math.ceil(maxChars * charWidth * 1.3);
+    // use an even number of nodes to let them be equally long to the left and right of the link connection
+    if (tagLength % 2 != 0) tagLength++;
+
+    // adjust the shape of the tag
     // start with rectangular shape
     let rectSize = Array(tagLength + 1).fill(tagHeight);
     let shapeSize = rectSize;
@@ -351,13 +378,14 @@ export default class OrCha {
       this._streamData.addNode(t, tag.name, shapeSize[i], undefined, {
         color: tag.color
       });
-      if (tag.type == 'inner' || tag.type == 'on')
+      if (tag.type == 'in' || tag.type == 'on')
         this._streamData.addParent(t, tag.name, tag.stream);
+
       // create an inner rectangular shape which is not influenced by links
       this._streamData.addNode(t, labelName, rectSize[i], undefined, {
         labels,
         color: 'transparent',
-        fontSize: tag.size,
+        fontSize,
         edgeType: 'label'
       });
       this._streamData.addParent(t, labelName, tag.name);
@@ -431,8 +459,8 @@ export default class OrCha {
 
   _hideMergePositions() {
     const x = this._stream._streamData.xScale;
-    const dx = x(1) - x(0);
     const y = this._stream._streamData.yScale;
+    const dx = x(1) - x(0);
     // get current render position of merge nodes
     for (let merge of this._mergePositions) {
       merge.size = y(merge.node.y1) - y(merge.node.y0);
@@ -489,6 +517,11 @@ export default class OrCha {
   _multiplyRootSize(value) {
     let times = this._streamData._timesteps;
     for (let t in times) times[t].tree.dataSize *= value;
+  }
+
+  _setRootSize(value) {
+    let times = this._streamData._timesteps;
+    for (let t in times) times[t].tree.dataSize = value;
   }
 
   _onForceEnd() {

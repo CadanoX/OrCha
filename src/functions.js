@@ -1,3 +1,7 @@
+export const $ = (css, parent = document) => parent.querySelector(css);
+export const $$ = (css, parent = document) =>
+  Array.from(parent.querySelectorAll(css));
+
 export function isNumeric(n) {
   return !isNaN(parseFloat(n)) && isFinite(n);
 }
