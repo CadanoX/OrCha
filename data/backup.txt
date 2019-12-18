@@ -65,7 +65,7 @@ Regionalists,1930,VisualArt,1931
 
 stream,time,text,type,size,shape
 Literature,1899,(The Jewish)/Forward
-Literature,1907,Mother/Earth,,30
+Literature,1907,Mother/Earth,,
 Literature,1913,The/Glebe
 Literature,1915,Other
 Literature,1949,San Remo

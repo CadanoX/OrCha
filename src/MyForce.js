@@ -156,13 +156,16 @@ export default class MyForce {
 
   _tick() {
     let { range } = this._opts;
-
+    let extraSpace = 0.2;
     this._data.nodes.forEach(function(d) {
       // keep nodes in window bounds
       if (range[0])
         d.x = Math.max(d.width / 2, Math.min(range[0] - d.width / 2, d.x));
       if (range[1])
-        d.y = Math.max(d.height / 2, Math.min(range[1] - d.height / 2, d.y));
+        d.y = Math.max(
+          d.height / 2 + extraSpace,
+          Math.min(range[1] - d.height / 2 - extraSpace, d.y)
+        );
 
       // force nodes back into their parent elements
       // TODO: this is super inefficient. store data in an object with IDs instead

@@ -49,7 +49,7 @@ export default class OrCha {
 
     if (graphContainer) this._graph = new MyGraph(graphContainer);
 
-    this._rootSize = 15;
+    this._rootSize = 150;
     this._streamSize = 1;
     this._fontSize = 7;
 
@@ -300,12 +300,18 @@ export default class OrCha {
     // TODO: possibly this is not a unique name
     link.name = link.from + link.to;
 
+    let streamNode = this._streamData._timesteps[link.start].references[
+      link.from
+    ];
+    let color = streamNode ? streamNode.data.color : 'orange';
+
     let last = link.from;
     // add inbetween nodes
     if (link.end - link.start > 1) {
       for (let t = +link.start + 1; t < link.end; t++) {
         this._streamData.addNode(t, link.name, undefined, undefined, {
-          edgeType: 'link'
+          edgeType: 'link',
+          color
         });
       }
       this._streamData.addNext(link.start, link.from, link.name);
@@ -317,9 +323,11 @@ export default class OrCha {
       this._streamData.addNext(link.end - 1, last, link.to);
     } else {
       // stream attaches to the other stream
-      let linkEnd = link.name; // + 'port';
+      let linkEnd = last + 'port';
+
       this._streamData.addNode(link.end, linkEnd, undefined, undefined, {
-        edgeType: 'link'
+        edgeType: 'link',
+        color
       });
       this._streamData.addParent(link.end, linkEnd, link.to);
       this._streamData.addNext(link.end - 1, last, linkEnd);
