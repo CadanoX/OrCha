@@ -49,7 +49,7 @@ export default class OrCha {
 
     if (graphContainer) this._graph = new MyGraph(graphContainer);
 
-    this._rootSize = 150;
+    this._rootSize = 200;
     this._streamSize = 1;
     this._fontSize = 7;
 
@@ -435,9 +435,9 @@ export default class OrCha {
 
   _onForceUpdate() {
     // draw graph with new positions
-    if (this._graph) this._graph.data(this._graphData);
+    //if (this._graph) this._graph.data(this._graphData);
     // draw stream with new positions
-    this._applyNodePositionsToStream();
+    //this._applyNodePositionsToStream();
     // this._hideMergePositions();
   }
 
@@ -533,6 +533,8 @@ export default class OrCha {
   }
 
   _onForceEnd() {
+    // draw stream with new positions
+    this._applyNodePositionsToStream();
     this._makeFancyTimeline();
     this._callback();
   }

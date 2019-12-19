@@ -13,7 +13,7 @@ export default class MyForce {
     this._sim = d3.forceSimulation();
     // this._sim.stop();
     // this._sim.alpha(0);
-    this._sim.velocityDecay(0.1); // default 0.4
+    this._sim.velocityDecay(0.15); // default 0.4
     this._sim.alphaDecay(0.07); // default 0.028
     this._sim.on('tick', () => this._tick());
     if (this._opts.callbackEnd) this._sim.on('end', this._opts.callbackEnd);
@@ -109,7 +109,7 @@ export default class MyForce {
       d3
         .forceCollide()
         .radius(d => d.height)
-        .strength(0) // default 0.7
+        .strength(0.003) // default 0.7
     );
 
     this._sim.force(
@@ -136,9 +136,9 @@ export default class MyForce {
       d3
         .forceLink(data.links.filter(d => d.type == 'tag'))
         .id(d => d.id)
-        .strength(0.1)
+        .strength(0.2)
         .iterations(1)
-        .distance(50)
+        .distance(30)
     );
 
     this._sim.force(

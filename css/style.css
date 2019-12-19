@@ -94,8 +94,9 @@ body {
 }
 
 #options {
-  width: 10%;
+  width: 9%;
   padding-left: 15px;
+  color: lightgrey;
 }
 
 .stream.active {
@@ -169,10 +170,6 @@ body {
   text-anchor: middle;
   dominant-baseline: hanging;
   font-size: 13px;
-}
-
-#options {
-  color: lightgrey;
 }
 
 text {
