@@ -435,9 +435,9 @@ export default class OrCha {
 
   _onForceUpdate() {
     // draw graph with new positions
-    //if (this._graph) this._graph.data(this._graphData);
+    if (this._graph) this._graph.data(this._graphData);
     // draw stream with new positions
-    //this._applyNodePositionsToStream();
+    this._applyNodePositionsToStream();
     // this._hideMergePositions();
   }
 
@@ -534,9 +534,9 @@ export default class OrCha {
 
   _onForceEnd() {
     // draw stream with new positions
-    this._applyNodePositionsToStream();
+    // this._applyNodePositionsToStream();
     this._makeFancyTimeline();
-    this._callback();
+    // this._callback();
   }
 
   __getDarkerColor(color) {

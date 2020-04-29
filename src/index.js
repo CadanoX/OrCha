@@ -1,10 +1,9 @@
 import '../css/style.css';
-
 import * as d3 from 'd3';
 import Papa from 'papaparse';
 // import myCyto from './MyCyto';
 import OrCha from './OrCha';
-import { isNumeric, randomize, d3ToCyto } from './functions.js';
+import { isNumeric, randomize, d3ToCyto, saveSvg } from './functions.js';
 
 var editors = {};
 var orcha;
@@ -27,486 +26,22 @@ let sizeSliderDrag = {};
 let sizeSliderHeight = 15;
 let sizeSliderWidth = 30;
 
+// Specify the CSV data format for displayed text editors
 const editorHeader = {
   streams: 'name,start,end,color,values,parent',
   links: 'from,start,to,end,merge',
   tags: 'stream,time,text,type,size,shape'
 };
+// Initialize editor content with an example
 const example = {
-  streams: `Downtown,1972,1995,#906,1977/1-1983/3-1995/3
-Cassavetes,1953,1978,#906,1953/2-1976/2-1977/7
-Film,1942,2000,#906,1942/6-1965/6-1966/4-1993/3-1994/6-1995/3-2000/3
-Photography,1978,1988,#906,1978/2
-Photography,1990,1996,#906,1996/2
-Video,1975,2000,#906,1975/3-1996/4-1998/5-2000/12
-InstArtUrban,1970,1998,#906,1970/6-1998/6
-Brooklyn,2000,2000
-Music,1905,2000,#b0a0aa,1905/8-1910/8-1911/4-1987/4-1988/8-2000/12
-HotStyleJazz,1912,1987,#b0a0aa,1911/4-1926/3
-MainstreamJazz,1974,1993,#999,1974/2-1993/3
-Literature,1896,2000,#bed2dd,1896/17-1900/17-1901/16-1903/13-1904/11-1910/11-1912/12-1916/11-1917/10-2000/10
-LostGen,1921,1938,#bed2dd,1921/3-1938/3
-Jackson,1955,1960,#bed2dd
-Radical,1899,1953,#5e95f2,1899/10-1914/5-1915/5-1918/1-1922/1-1935/3-1953/1
-JohnReed,1911,1913,#5e95f2
-Paterson,1911,1915,#5e95f2
-MassesCrowd,1912,1914,#5e95f2
-Dance1,1899,1964,#bfafba,1899/6-1904/5-1910/1-1930/1-1935/3-1964/4
-Dance2,1970,2000,#bfafba,1964/4-2000/4
+  streams: `Literature,1896,2000,#bed2dd,1896/17-1900/17-1901/16-1903/13-1904/11-1910/11-1912/12-1916/11-1917/10-2000/10
 TinPanAlley,1907,2000,purple,1907/2-1950/2-1961/7-1965/15-1973/8
-Weavers,1944,1961,#800,1944/2-1961/3
-FolkRevival,1955,1961,#DAD,,Weavers
-FolkRevival2,1962,1988,#DAD,1961/3-1965/5-1966/13-1967/13-1968/10-1973/6,TinPanAlley
-ClassicRock,1974,1978,purple,1974/4-1978/3
-HipHop,1976,1988,purple,1980/2-1988/2
-Vaudeville,1898,1933,#dd6d6c,1898/7-1933/4-1998/8
-Theater,1898,2000,#dd6d6c,1898/7-1910/8-1922/16-1935/8-1958/16-1969/16-1970/8-2000/8
-OffBway,1950,1956,#A22,1950/4-1956/4,Theater
-OffBway,1956,1967,#A22,1957/4-1967/3,
-Performance,1970,2000,#D77,1970/7-1980/7-1989/14-1990/7-2000/3
-knot,1965,1974,#FCC,1965/7-1968/20-1971/15-1972/8-1974/6
-VisualArt,1898,1964,#ed7382,1898/10-1910/10-1918/20-1928/20-1933/8-1940/10-1952/26-1958/26-1964/15
-NewYorkSchool,1943,1955,#EBB,1943/1-1949/8-1952/18-1955/8,VisualArt
-Abex,1956,1962,#6cabd6
-Regionalists,1921,1930,#C46,1921/3
-Pop,1959,1978,#FCC,1960/15-1968/16-1969/8-1979/8
-EastVillage,1979,1990,#A22,1979/8-1984/20-1988/5-1990/5
-Einstein,1975,2000,#dd6d6c,1975/4-1984/6-1988/8-1992/5-2000/3
-EmptyIndust,1966,1981,#C58,1966/1-1967/11-1981/15
-RedSpotOutdoor,1982,1999,#FBC,1982/15-1986/30-1990/25-1991/30-1994/25
-EarlyGen,1982,1989,#FCD,1982/10-1984/20-1985/20-1989/10,RedSpotOutdoor
-Lifestyle,1902,1986,#b38f55,1902/2-1955/2-1957/8-1973/8-1976/6-1986/5
 UptownGalleries,1954,1972,#6cabd6,1954/4-1971/4-1972/2`,
-  links: `Cassavetes,1978,Downtown,,true
-EastVillage,1989,Photography,,true
-Film,1974,Video,,true
-Film,1987,Downtown,1992
-Film,1965,knot,1967
-Film,1963,Performance,1966
-Film,1970,TheAnthology,,true
-Film,1971,ElectArts,,true
-Performance,1992,Video,1995,true
-Pop,1969,InstArtUrban,,true
-Pop,1977,Photography
-InstArtUrban,1998,Video,,true
-InstArtUrban,1998,Brooklyn,2000,true
-RedSpotOutdoor,1994,Brooklyn,2000,true
-Photography,1984,RedSpotOutdoor,1987
-Photography,1996,Video,,true
-Photography,1988,EastVillage,,true
-Music,1911,HotStyleJazz,,true
-HotStyleJazz,1987,Music,,true
-HotStyleJazz,1973,MainstreamJazz,,true
-Music,1970,knot,1974
-Music,1981,RedSpotOutdoor,1984
-Literature,1910,JohnReed,1911
-Literature,1920,LostGen,1921,true
-Literature,1955,Jackson,,true
-Literature,1959,TinPanAlley,1962
-LiteratureTinPanAlley,1961,FolkRevival2,1965
-Literature,1970,Burroughs,,true
-Radical,1902,Literature,1907
-Radical,1906,Paterson,1911
-Radical,1907,MassesCrowd,1912
-JohnReed,1912,Paterson
-Paterson,1913,MassesCrowd
-Dance1,1964,knot,
-knot,1970,Dance2
-TinPanAlley,1907,Music
-TinPanAlley,1974,Pop,1976,true
-TinPanAlley,1978,EmptyIndust,1990
-Weavers,1961,TinPanAlley,
-FolkRevival,1961,FolkRevival2,1962,true
-TinPanAlley,1973,ClassicRock,,true
-ClassicRock,1975,HipHop,,true
-Vaudeville,1933,Theater,,true
-Theater,1969,Performance,,true
-Theater,1955,knot,1965,true
-OffBway,1966,UptownGalleries,1969
-Performance,1978,EastVillage,,true
-VisualArt,1964,knot,,true
-VisualArt,1958,Pop,,true
-Regionalists,1930,VisualArt,1931
-NewYorkSchool,1955,Abex
-Abex,1962,UptownGalleries,,true
-Pop,1970,knot,,true
-Pop,1965,EmptyIndust,,true
-Pop,1978,EastVillage,,true
-knot,1971,Pop,,true
-knot,1974,Performance,1981
-knot,1974,Einstein,1975,true
-EmptyIndust,1981,RedSpotOutdoor,,true
-EastVillage,1990,RedSpotOutdoor,,true
-UptownGalleries,1971,Downtown`,
-  tags: `Downtown,1985,downtown-sploitation films,on,
-Cassavetes,1955,Cassavetes,on
-Cassavetes,1974,independent films,on
-Cassavetes,1977,deniro/scorsese/keitel,on
-Film,1943,(maya deren),on
-Film,1947,Film,on,2
-Film,1955,maas; menken; markopoulos; brakhage,on
-Film,1956,shirley clarke,on
-Film,1958,pull/my daisy,in
-Film,1964,underground film,on,1.5
-Film,1965,jonas mekas; expanded cinema,on
-Film,1980,no wave cinema,on
-Film,1988,cinema of transgression,on
-Film,1994,n.y./undergorund/film festival,on
-Video,1976,Video,on,1.5
-Video,1998,Video,on,2
-InstArtUrban,1971,inst. for/art+urban/resources,on
-InstArtUrban,1973,clocktower,on
-InstArtUrban,1973,mercer/arts/center,in
-InstArtUrban,1979,mudd/club,in
-InstArtUrban,1982,art in/general,on
-Photography,1986,piss christ,on
-Photography,1980,photography,on,1.5
-Photography,1983,mapplethorpe,on
-Photography,1995,photography,on
-Music,1907,Music,on,2
-Music,1916,Carl Ruggles,on
-Music,1917,Edgard Varèse,on
-Music,1928,Henry Cowell,on,1.5
-Music,1933,(Aaron Copland),on
-Music,1934,Wallingford Riegger,on
-Music,1939,Virgil Thomson,on
-Music,1941,Paul Bowles,on
-Music,1945,John Cage,on,1.5
-Music,1951,Earle Brown,on,0.75
-Music,1954,David Tudor/Morton Feldman,on,0.75
-Music,1955,Ch. Wolff,on,0.75
-Music,1958,La Monte/Young,on,0.75
-Music,1960,Richard Mayfield,on,0.75
-Music,1961,Tone Road,on,0.75
-Music,1963,Terry Riley,on,0.75
-Music,1967,Phil Glass,on
-Music,1968,Steve Reich,on,0.75
-Music,1972,Experimental/Intermedia,on,0.75
-Music,1973,n.y./musicians/festival,in,0.75
-Music,1975,Niblock,on,0.75
-Music,1978,Kitchen,on,
-Music,1978,New Music New York/Festival,on
-Music,1984,Next Wave @ BAM,on
-Music,1987,Bang on/a Can,on
-Music,1990,Knitting/Factory,on
-HotStyleJazz,1913,james reese europe's/society orchestra/first black recording
-HotStyleJazz,1915,nyc-new"hot"style/of jazz,on
-HotStyleJazz,1921,paul whiteman/"king of jazz"/moves to nyc,on
-HotStyleJazz,1927,the jazz age,on,1.5
-HotStyleJazz,1937,swing,on,2
-HotStyleJazz,1947,bee bop,on,1.5
-HotStyleJazz,1950,cool,on,1.5
-HotStyleJazz,1954,hard bop,on,1.2
-HotStyleJazz,1963,free jazz,on,1
-HotStyleJazz,1973,fusion,on
-HotStyleJazz,1982,worldbeat,on
-HotStyleJazz,1986,s.o.b.'s,on
-MainstreamJazz,1980,mainstream jazz,on
-MainstreamJazz,1992,end/village/gate,on
-LostGen,1933,Lost Generation,on,1.5
-Jackson,1957,e.g. jackson mac low,on
-Radical,1903,radical left,on,2
-Literature,1912,the/masses,in,2
-Radical,1914,joe hill/executed,in
-Radical,1918,new york school for social research
-Radical,1927,sacco +/vanzetti/executed,on
-JohnReed,1912,john/reed,on,1.5
-Paterson,1913,Paterson/mill strike/pageant,on,
-MassesCrowd,1913,the "Masses"/crowd,on,0.8
-Literature,1898,whiteman / poe / james / melville / crane,on
-Literature,1899,(The Jewish)/Forward
-Literature,1900,literature,on,2
-Literature,1901,O.henry,on
-Literature,1901,mark twain,on
-Literature,1904,willa cather,on
-Literature,1905,emma goldman,on
-Literature,1906,Mother / earth
-Literature,1912,the / glebe
-Literature,1912,others
-Literature,1912,randolph / bourne / culture / of youth
-Literature,1913,the new / republic
-Literature,1914,ink pot
-Literature,1914,bruno's weekly
-Literature,1914,theodor dreiser's "the genius" banned,in
-Literature,1916,seven arts
-Literature,1916,washington / square / book shopLiterature
-Literature,1920,broom
-Literature,1920,dial
-Literature,1921,contact
-Literature,1926,the strand
-Literature,1927,the new / masses
-Literature,1936,e.e. cummings · kenneth · burke · john dos passos · djuna barnes · james agee · delmore schwartz · wm gaddis · (norman mailer),on
-Literature,1940,view
-Literature,1946,partisan / review
-Literature,1947,possibilities
-Literature,1949,tiger / eye
-Literature,1949,san remo
-Literature,1951,catcher / in the rye
-Literature,1952,the beats,on,2
-Literature,1952,grove / presss
-Literature,1952,white horse / tavern
-Literature,1954,film / culture
-Literature,1954,village / voice
-Literature,1956,it is
-Literature,1956,norman mailer
-Literature,1959,published / on the road / howl / naked lunch
-Literature,1959,new york sch. poets,on,2
-Literature,1960,floating / bear
-Literature,1960,broadside
-Literature,1960,padgett,on
-Literature,1961,fuck you
-Literature,1963,east / village / other
-Literature,1964,yugen
-Literature,1964,ryan koch,on
-Literature,1965,giorno / poetry / systems,in
-Literature,1965,ed sanders*tuli,on
-Literature,1965,peace eye / books
-Literature,1965,poetry project / st. marks,on
-Literature,1968,screw
-Literature,1969,interview
-Literature,1969,dial-a- / poem,on
-Literature,1969,oscar wilde / bookshop
-Literature,1970,art-rite
-Literature,1970,avalanche
-Literature,1970,assembling,in
-Literature,1971,radical software
-Literature,1971,nyc / poetry / calendar,in
-Literature,1971,october
-Literature,1971,soho weekely / news
-Literature,1971,semrotext(e)
-Literature,1973,appearances,in
-Literature,1973,kathy acker / patti smith / nuyorican / poets cafe,in
-Literature,1974,zone
-Literature,1974,punk
-Literature,1975,heresies
-Literature,1975,motion picture,in
-Literature,1976,soho arts
-Literature,1979,cover
-Literature,1980,east village eye
-Literature,1980,benzene
-Literature,1981,bomb
-Literature,1981,new / observations,in
-Literature,1981,east village eye
-Literature,1981,Lynn tillman,on
-Literature,1981,watnarowicz,on
-Literature,1982,gary indiana,on
-Literature,1983,between c+d
-Literature,1983,red tape
-Literature,1984,just another / asshole
-Literature,1985,Taz,on
-Literature,1985,cookie meulle,on
-Literature,1988,cuz
-Literature,1988,n. y. press
-Literature,1988,tama janowitz,on
-Literature,1992,Coagula
-Literature,1992,poetry / slams,on
-Literature,1994,NY arts
-Literature,1995,zing
-Literature,1997,ubu / web
-Literature,2000,bowery / pottery club,opens
-Dance1,1902,dance,on,2
-Dance1,1939,martha graham,on,1.5
-Dance1,1950,merce cunningham,on,1.5
-Dance1,1957,james waring,on
-Dance1,1961,judson dance theater,on,1.5
-Dance2,1971,yvonne rainer/"grand union",on,1.5
-Dance2,1975,trisha brown,on
-Dance2,1978,eden x-way,on
-Dance2,1981,eiko + koma,on
-Dance2,1986,dance,on,1.5
-Dance2,1987,bill t jones/arnold zane,on
-Dance2,1993,stomp
-Dance1,1901,sadora duncan/"free dance"
-TinPanAlley,1912,(george cohan),on
-TinPanAlley,1925,tin pan alley,on,1.5
-TinPanAlley,1931,28th street,on
-TinPanAlley,1951,brill building hit parade,on,1.5
-TinPanAlley,1960,pop,on,1.5
-Weavers,1949,weavers,on
-FolkRevival,1957,folk revival,on,1.5
-FolkRevival2,1963,baez,on
-FolkRevival2,1964,dylan,on,1.5
-FolkRevival2,1966,folk rock,on,1.4
-FolkRevival2,1967,velvet/underground/the fugs,on,0.7
-FolkRevival2,1969,electric/ladyland,on,0.7
-TinPanAlley,1969,psychedelic,on
-TinPanAlley,1971,lou reed,on,0.7
-FolkRevival2,1971,ny dolls,on,0.7
-FolkRevival2,1972,suicide,on,0.7
-ClassicRock,1975,kiss,on,0.7
-ClassicRock,1976,steely dan,on,0.7
-ClassicRock,1976,classic rock,on,1.6
-HipHop,1982,hip hop,on,1.5
-FolkRevival2,1974,CBGB's,in,2
-FolkRevival2,1975,punk,on,2
-FolkRevival2,1974,television/patti smith,on,0.7
-FolkRevival2,1979,new wave · no wave,on,1.5
-FolkRevival2,1977,talking heads/blondie/post punk,on,0.7
-FolkRevival2,1981,mars/l.lunch/contortions/dna/branca,on,0.7
-FolkRevival2,1983,hardcore,on,0.7
-FolkRevival2,1983,john zorn,on
-TinPanAlley,1986,sonic youth,on,1.2
-Theater,1904,Theater,on,2
-Theater,1915,washington / square / players,in
-Theater,1916,thimble / theater,in
-Theater,1917,bruno's / player,on,0.7
-Theater,1917,provincetown / players,in,1.5
-Theater,1920,provincetown / playhouse,on
-Theater,1920,grnwich / village / follies,in
-Theater,1922,emperor / jones / on b-way
-Theater,1923,paul + jones / drag shows,on
-Theater,1924,Cherry/Lane/Theater,in
-Theater,1925,civic rep / eve la gallienne,on
-Theater,1932,Group / theater,in,1.5
-Theater,1933,the / theater / union,in,1.3
-Theater,1937,craddle / will rock,in
-Theater,1938,federal theater project,on
-Theater,1947,living / theater,in
-Theater,1947,actor's / studio
-Theater,1955,phoenix theater,on
-Theater,1955,fourth st. theater - david ross,on
-Theater,1958,caffe / cino,on,1.5
-Theater,1959,"the connection",on
-Theater,1961,new dramatist,on
-Theater,1961,= begin off.of,on
-Theater,1962,judson poets,on
-Theater,1962,la mama,in
-Theater,1962,the brig / l.t. leaves usa,in
-Theater,1964,bread / + / puppets,in
-Theater,1964,playwrites unit / theater,on
-Theater,1965,first new / theater rally,on
-Theater,1965,open theater,on
-Theater,1965,new bowery,on
-Theater,1966,"dutchman",on
-Theater,1970,richard foreman / ontological - hysteric,on
-Theater,1973,theater for the new city,on
-Theater,1977,wooster group,on
-Theater,1998,fringe / festival,on
-Theater,1994,new york / theater workshop,on
-Vaudeville,1904,Vaudeville +/Yiddish Theater,on,1.5
-Vaudeville,1923,golden age of / yiddish theater,on
-OffBway,1951,Circle/in the/Square,in
-OffBway,1954,--> Off Bway,on
-OffBway,1956,Shakespear Workshop,on
-OffBway,1959,edward albee,on
-OffBway,1962,"who's afraid..",on
-OffBway,1966,public/theater,in
-Performance,1972,ridiculous theater co.,on
-Performance,1974,kipper kids,on
-Performance,1977,Performance Art,on,2
-Performance,1982,PS 122,in,
-Performance,1984,o. superman/ l.anderson,on
-Performance,1986,spalding / grey,on
-Performance,1988,mondo / beyond / on / hbo
-Performance,1992,blue man / group
-Performance,1993,here
-Regionalists,1924,(regionalists),on,1.5
-VisualArt,1903,Visual Art,on,2
-VisualArt,1900,10th street studio building,on
-VisualArt,1904,stieglitz/291/gallery
-VisualArt,1905, "a club"/artist/coop,on
-VisualArt,1908,the/eight/exhibition,in
-VisualArt,1912,armory/show
-VisualArt,1914,brund's/garret
-VisualArt,1915,marcel duchamp,on
-VisualArt,1916,society of/independent/artists,in
-VisualArt,1917,ashcan school,on,2
-VisualArt,1915,jewish/forward/offices
-VisualArt,1915,people's/art/guild
-VisualArt,1917,exhibition/rejects/"fountain"/r.mutt
-VisualArt,1917,sheridan/sq. gallery
-VisualArt,1918,whitney/studio/club,on
-VisualArt,1918,manray/jos stella,on
-VisualArt,1919,in polly's/restaurant
-VisualArt,1920,romany/marie's
-VisualArt,1921,edw/hopper/exhib'n,on
-VisualArt,1922,precisionism,on
-VisualArt,1926,gallatin/collection/nyu,on,0.7
-VisualArt,1928,first/commercial/galleries,on,0.7
-VisualArt,1933,open/whitney/museum/8th street,in
-VisualArt,1941,joseph cornell,on
-VisualArt,1946,subjects/of the/artist/school
-VisualArt,1949,the/club on/8th st
-VisualArt,1946,hans/hofmann/schools
-VisualArt,1949,cedar/street/tavern
-VisualArt,1955,tenth street coop galleries,on
-VisualArt,1961,city gall. Delancey museum/red grooms - jim dine/allan kaprow - happenings/claes oldenburg/the store/robt.whitman,on
-NewYorkSchool,1948,the new york school,on,1.5
-NewYorkSchool,1950,irascibles/photo,in,0.7
-NewYorkSchool,1950,boycott the met,on
-NewYorkSchool,1951,9th street/show,,0.8
-NewYorkSchool,1951,abstract/expressionism,on,1.2
-NewYorkSchool,1954,rauschenberg/neo dada,on
-Abex,1959, "New american painting" @ moma/ab-ex artist to uptown,on,0.8
-Pop,1961,pop,on,1.5
-Pop,1960,warhol,in
-Pop,1964,soho,on,1.5
-Pop,1963,minimalism,on,0.7
-Pop,1967,B. nauman oppenhem,on
-Pop,1970,vito acconci,on,1.2
-Pop,1973,cheap apartments,on
-Pop,1977,kenkelsea/house,on
-knot,1968,EAT/experiments/in art and/technology/billy kluver,on
-knot,1972,meredith monk,on
-Einstein,1977,einstein on/the beach,on
-Einstein,1991,nea/4/scandal,in,1.2
-Einstein,1995,international,on
-Einstein,1998,festials,on
-EastVillage,1982,east village,on,2
-EastVillage,1982,|-fun gallery------|,on
-EastVillage,1981,explosion,on
-EastVillage,1982,group material,on
-EastVillage,1985,100 storefront/galleries,on
-EastVillage,1986,new figuration,on
-EastVillage,1986,neo geo,on
-EastVillage,1988,to soho,on
-EmptyIndust,1968,empty/industrial/spaces,on
-EmptyIndust,1969,fluxhouse cooperatives,on,0.7
-EmptyIndust,1969,post minimalism,on,0.7
-EmptyIndust,1971, "food" matta clark,on,0.7
-EmptyIndust,1971,112 greene/street,on,0.7
-EmptyIndust,1973,soho/arts/festival,on,0.7
-EmptyIndust,1975,beuys/in n.y.,on,0.7
-EmptyIndust,1977,85 galleries/in soho,on
-EmptyIndust,1977,whitney/counterseight/shows,on,0.7
-EmptyIndust,1978,earth/room,on,0.7
-EmptyIndust,1979,broken/kilometer,on,0.7
-EmptyIndust,1979,real estate/prices increase,on,0.7
-RedSpotOutdoor,1982,white/columns,in
-RedSpotOutdoor,1983,exit/art,in
-RedSpotOutdoor,1983,red spot/outdoor/slide theater,on
-RedSpotOutdoor,1985,storefront/for art and/architecture,on
-RedSpotOutdoor,1991,ortmalls @/prince + b-way,on
-RedSpotOutdoor,1993,---------/designer/retail/shops/---------,on
-RedSpotOutdoor,1992,guggenheim/soho,in
-RedSpotOutdoor,1994,thread waking/space,in
-Lifestyle,1904,Lifestyle,on,2
-Lifestyle,1909,inexpensive / rents
-Lifestyle,1913,ny tribute: / "who's who in n.y.'s / bohemia"
-Lifestyle,1914, "america's / montmartre"
-Lifestyle,1916,tours + guidebooks / to greenwich / village
-Lifestyle,1917,subway to / greenwich village / opens
-Lifestyle,1921,paul + joes / drag shows
-Lifestyle,1923,·chumleys / ·the hell hole / ·minetta tavern / ·club gallant
-Lifestyle,1926, __gay clubs__ / · the jungle / ·black cat / ·flower pot / ·res mask
-Lifestyle,1925,influz of alienated / hopefulls from / small towns
-Lifestyle,1927,rents / increase 140% / (gentrification cycle / is established)
-Lifestyle,1953,from beats to,on
-Lifestyle,1957,beatniks,on,1.5
-Lifestyle,1967,mattachine / "sip in"
-Lifestyle,1968,hippies,on,2
-Lifestyle,1969,stonewall / police riot
-Lifestyle,1972,gay activist / alliance - / firehouse
-Lifestyle,1973,art world feminism,on
-Lifestyle,1974,air gallery
-Lifestyle,1976,midnight: / rockey horror pict. show
-Lifestyle,1982,gmhc / gay men's health / crisis
-Lifestyle,1982,2no/loft/law,in,1.5
-Lifestyle,1983,act up,,1.5
-Lifestyle,1985,|| aids epidemic ||,,2
-Lifestyle,1964,first/loft/law,in,1.5
-UptownGalleries,1960,Uptown galleries,on,2
-UptownGalleries,1970,uptown goes/downtown,on`
+  links: `Literature,1912,TinPanAlley,1916
+UptownGalleries,1972,TinPanAlley,1980`,
+  tags: `TinPanAlley,1965,label on stream,on,1.5
+Literature,1945,outside label,,2
+Literature,1981,inside label,in`
 };
 
 document.addEventListener('DOMContentLoaded', async function(event) {
@@ -515,22 +50,32 @@ document.addEventListener('DOMContentLoaded', async function(event) {
     document.querySelector('#d3graph'),
     onGraphReady
   );
+
+  // Download result image
+  document.querySelector('#saveSvg').onclick = onSaveButtonClicked;
   // cyto = new myCyto(document.querySelector('#graph'), onGraphUpdated);
   setupEditors();
   setupPopups();
   setupOptions();
 });
 
+/* Editors enable text input to adjust the rendered data.
+ * On every character change, the editors' content is parsed and rendered.
+ * We display editors for streams, links, and tags, each following their own format.
+ */
 function setupEditors() {
+  // Initialize all editors
   for (let name of ['streams', 'links', 'tags']) {
     editors[name] = document.querySelector('#editor-' + name);
-    let storedData = retreiveData(name);
     editors[name].oninput = () => onDataChanged(name);
-    // addToEditor(
-    //   name,
-    //   storedData && storedData != '' ? storedData : example[name]
-    // );
-    addToEditor(name, example[name]);
+
+    // Load data from the local storage
+    let storedData = retreiveData(name);
+    // If local storage is empty, load an example instead
+    addToEditor(
+      name,
+      storedData && storedData != '' ? storedData : example[name]
+    );
   }
 }
 
@@ -551,11 +96,14 @@ function setupPopups() {
 function setupOptions() {
   let options = document.querySelectorAll('#options > div');
   for (let option of options) {
-    option.querySelector('input').oninput = () => forceParameterChanged(option);
-    option.querySelector('input').onchange = () => {
-      let text = option.querySelector('.value');
-      text.innerText = option.querySelector('input').value;
-    };
+    let slider = option.querySelector('input');
+    if (slider) {
+      slider.oninput = () => forceParameterChanged(option);
+      slider.onchange = () => {
+        let text = option.querySelector('.value');
+        text.innerText = slider.value;
+      };
+    }
   }
 }
 
@@ -1045,4 +593,8 @@ function graphToDot(data) {
     string += edge.data.source + '->' + edge.data.target + '\n';
   }
   return string + '}';
+}
+
+function onSaveButtonClicked() {
+  saveSvg(document.querySelector('svg.secstream'), 'orcha');
 }

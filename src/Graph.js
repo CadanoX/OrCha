@@ -17,6 +17,7 @@ export default class MyGraph {
             this._nodes.attr('transform', d3.event.transform);
           })
       );
+    this._links = this._svg.append('g').attr('class', 'links');
     this._nodes = this._svg.append('g').attr('class', 'nodes');
     this._domainX = [Infinity, 0];
     this._domainY = [Infinity, 0];
@@ -42,21 +43,72 @@ export default class MyGraph {
     let y = d3
       .scaleLinear()
       .domain(this._domainY)
-      .range([0, this._height]);
+      .range([this._height / 4, this._height]);
 
+    // add stream nodes
     this._nodes
       .selectAll('rect')
       .data(d.nodes)
       .join(
         enter =>
           enter
+            // .append('rect')
+            // .attr('width', 2.5)
+            // .attr('height', d => d.height * 10)
             .append('rect')
-            .attr('width', 2.5)
-            .attr('height', d => d.height * 10)
-            .attr('x', d => x(d.x))
-            .attr('y', d => y(d.y))
-            .attr('fill', d => d.color),
-        update => update.attr('y', d => y(d.y)),
+            .filter(
+              d => !d.name.startsWith('labeltag') && !d.name.startsWith('tag')
+            )
+            .attr('width', 20)
+            .attr('height', d => d.height * 5)
+            .attr('x', d => x(d.x) - 10)
+            .attr('y', d => y(d.y) - d.height * 2.5)
+            .attr('fill', d => d.color)
+            .attr('stroke', 'black'),
+        update => update.attr('y', d => y(d.y) - d.height * 2.5),
+        exit => exit.remove()
+      );
+    // add label nodes
+
+    this._nodes
+      .selectAll('ellipse')
+      .data(d.nodes)
+      .join(
+        enter =>
+          enter
+            // .append('rect')
+            // .attr('width', 2.5)
+            // .attr('height', d => d.height * 10)
+            .append('ellipse')
+            .filter(d => d.name.startsWith('tag'))
+            .attr('rx', 10)
+            // .attr('ry', d => (d.height * 5 > 10 ? d.height * 5 : 10))
+            .attr('ry', 10)
+            .attr('cx', d => x(d.x))
+            .attr('cy', d => y(d.y))
+            .attr('fill', d => (d.color == 'transparent' ? '#AAA' : d.color))
+            .attr('stroke', 'black'),
+        update => update.attr('cy', d => y(d.y)),
+        exit => exit.remove()
+      );
+
+    this._links
+      .selectAll('line')
+      .data(d.links)
+      .join(
+        enter =>
+          enter
+            .append('line')
+            .attr('stroke-width', d => 3)
+            .attr('stroke', d =>
+              d.source.color == 'transparent' ? '#AAA' : d.source.color
+            )
+            .attr('x1', d => x(d.source.x))
+            .attr('y1', d => y(d.source.y))
+            .attr('x2', d => x(d.target.x))
+            .attr('y2', d => y(d.target.y)),
+        update =>
+          update.attr('y1', d => y(d.source.y)).attr('y2', d => y(d.target.y)),
         exit => exit.remove()
       );
   }
