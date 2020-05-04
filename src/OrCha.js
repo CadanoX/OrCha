@@ -1,3 +1,11 @@
+/**
+ * We utilize the SplitStreams library as a basis to draw nested streams.
+ * Therefore, initial data (streams, links, labels) are transformed to the
+ * SplitStreams data format.
+ * The nodes of all streams are embedded in a force layout to change their position.
+ * If a graphContainer is givem, the linked nodes of the layout are drawn in the div.
+ */
+
 import * as d3 from 'd3';
 import * as Color from 'color';
 import { isNumeric } from './functions.js';
@@ -8,7 +16,7 @@ import {
   TransformData
 } from '../libs/SplitStreams.js';
 import MyForce from './MyForce';
-import MyGraph from './Graph';
+import MyGraph from './MyGraph';
 import { interpolateOranges } from 'd3-scale-chromatic';
 import { runInThisContext } from 'vm';
 
@@ -16,7 +24,68 @@ export default class OrCha {
   constructor(streamContainer, graphContainer, readyFunction) {
     this._streamContainer = streamContainer;
     this._callback = readyFunction;
-    this._stream = new SplitStream(streamContainer, {
+    this.stream;
+    this._rootSize = 200;
+    this._streamSize = 1;
+    this._fontSize = 7;
+    this._mergePositions = []; // stores nodes with times when they merge into other streams
+
+    this._initStream();
+    if (graphContainer) this._graph = new MyGraph(graphContainer);
+
+    this._stream._svg.attr('font-size', this._fontSize + 'px');
+  }
+
+  set streamSize(value) {
+    this._streamSize = value;
+  }
+
+  data(d) {
+    return d == null ? this._streamData : (this._setData(d), this);
+  }
+
+  get graphData() {
+    return this._graphData;
+  }
+
+  updateForce(parameter, value) {
+    this._graphLayout[parameter] = value;
+    this._graphLayout.run();
+  }
+
+  _setData(d) {
+    this._inputToStreamData(d);
+
+    // Apply node positions from the previous force layout
+    this._applyNodePositionsToStream();
+
+    // Increase the free space between nodes
+    //this._multiplyRootSize(2);
+    this._setRootSize(this._rootSize);
+
+    // this._drawSpaceHeight = document
+    //   .querySelector('svg > .zoom')
+    //   .getBBox().height;
+    this._drawSpaceHeight = document.querySelector(
+      'svg.secstream'
+    ).clientHeight;
+    this._drawSpaceWidth = document.querySelector('svg.secstream').clientWidth;
+
+    // draw the stream with its new data
+    this._stream.data(this._streamData);
+    // start a new force calculation
+    this._graphData = this._streamDataToGraph(this._streamData);
+    this._graphLayout.data(this._graphData);
+    // move nodes to the middle of the div
+    this._graphLayout.forceYValue = this._stream._maxValue / 2;
+    this._graphLayout.range = [undefined, this._rootSize];
+    this._graphLayout.run();
+
+    this._makeFancyTimeline();
+  }
+
+  _initStream() {
+    this._stream = new SplitStream(this._streamContainer, {
       mirror: true,
       showLabels: true,
       offset: 'zero',
@@ -43,63 +112,6 @@ export default class OrCha {
       callbackTick: this._onForceUpdate.bind(this),
       callbackEnd: this._onForceEnd.bind(this)
     });
-
-    // stores nodes with times when they merge into other streams
-    this._mergePositions = [];
-
-    if (graphContainer) this._graph = new MyGraph(graphContainer);
-
-    this._rootSize = 200;
-    this._streamSize = 1;
-    this._fontSize = 7;
-
-    this._stream._svg.attr('font-size', this._fontSize + 'px');
-  }
-
-  set streamSize(value) {
-    this._streamSize = value;
-  }
-
-  data(d) {
-    return d == null ? this._streamData : (this._setData(d), this);
-  }
-
-  get graphData() {
-    return this._graphData;
-  }
-
-  updateForce(parameter, value) {
-    this._graphLayout[parameter] = value;
-    this._graphLayout.run();
-  }
-
-  _setData(d) {
-    // convert CSV to SplitStream data format
-    this._inputToStream(d);
-    // apply the positioning from the previous force layout
-    this._applyNodePositionsToStream();
-    // increase the free space between nodes
-    //this._multiplyRootSize(2);
-    this._setRootSize(this._rootSize);
-    // this._drawSpaceHeight = document
-    //   .querySelector('svg > .zoom')
-    //   .getBBox().height;
-    this._drawSpaceHeight = document.querySelector(
-      'svg.secstream'
-    ).clientHeight;
-    this._drawSpaceWidth = document.querySelector('svg.secstream').clientWidth;
-
-    // draw the stream with its new data
-    this._stream.data(this._streamData);
-    // start a new force calculation
-    this._graphData = this._streamDataToGraph(this._streamData);
-    this._graphLayout.data(this._graphData);
-    // move nodes to the middle of the div
-    this._graphLayout.forceYValue = this._stream._maxValue / 2;
-    this._graphLayout.range = [undefined, this._rootSize];
-    this._graphLayout.run();
-
-    this._makeFancyTimeline();
   }
 
   _makeFancyTimeline() {
@@ -138,7 +150,8 @@ export default class OrCha {
     //   });
   }
 
-  _inputToStream(d) {
+  // Change the input data (streams, links, labels) to the SplitStreams format
+  _inputToStreamData(d) {
     this._streamData = new SplitStreamInputData({
       order: null
       // order: {
@@ -447,12 +460,14 @@ export default class OrCha {
     // reset the root size
     // for (let t in this._streamData._timesteps)
     //   this._streamData._timesteps[t].tree.dataSize = 0;
+
     // apply postiions for all nodes
     for (let node of this._graphData.nodes) {
       let nodes = this._streamData._timesteps[node.time];
       if (nodes) {
         let streamNode = nodes.references[node.name];
         if (streamNode) {
+          // The graph uses center positions, whereas stream positions are defined by their bottom line
           streamNode.dataPos = node.y - node.height / 2;
           // increase the root size to contain all nodes
           // if (nodes.tree.dataSize < node.y + node.height / 2)
@@ -465,6 +480,11 @@ export default class OrCha {
     this._stream.data(this._streamData);
   }
 
+  /* Due to the SVG depth layering, merge links need to be displayed above a stream
+   * to display proper shadows, but then they have their ending drawn on top of that
+   * stream as well.
+   * We aim to hide the drawn ending by applying a clip mask to the stream.
+   */
   _hideMergePositions() {
     const x = this._stream._streamData.xScale;
     const y = this._stream._streamData.yScale;

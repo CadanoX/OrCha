@@ -1,3 +1,7 @@
+/**
+ * Compute a graph layout for the given data based on defined forces.
+ */
+
 import * as d3 from 'd3';
 
 export default class MyForce {
@@ -6,7 +10,6 @@ export default class MyForce {
       callbackTick: () => {},
       callbackEnd: () => {},
       range: [undefined, undefined],
-
       ...opts // overwrite default settings with user settings
     };
 

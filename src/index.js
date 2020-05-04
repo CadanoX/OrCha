@@ -69,96 +69,153 @@ function setupEditors() {
     editors[name] = document.querySelector('#editor-' + name);
     editors[name].oninput = () => onDataChanged(name);
 
-    // Load data from the local storage
-    let storedData = retreiveData(name);
+    // Load data from the local storage to the editor
+    const storedData = retreiveData(name);
     // If local storage is empty, load an example instead
-    addToEditor(
-      name,
-      storedData && storedData != '' ? storedData : example[name]
-    );
+    const data = storedData && storedData != '' ? storedData : example[name];
+    addToEditor(name, data);
   }
 }
 
+/* In contrast to using the text editor, the user can interaction with the visualization
+ * to create streams and tags. We display a popup to enter text rendered for tags and stream names.
+ */
 function setupPopups() {
-  // add tags and streams on keypress enter
   popupTag = document.querySelector('#popupTag');
+  // Submit when Enter key is pressed
   popupTag.querySelector('input').addEventListener('keyup', e => {
     if (e.keyCode === 13)
       popupTag.querySelector('button[type="submit"]').click();
   });
   popupStream = document.querySelector('#popupStream');
+  // Submit when Enter key is pressed
   popupStream.querySelector('input').addEventListener('keyup', e => {
     if (e.keyCode === 13)
       popupStream.querySelector('button[type="submit"]').click();
   });
 }
 
+// React on changes of parameter settings for the force layout
 function setupOptions() {
-  let options = document.querySelectorAll('#options > div');
+  const options = document.querySelectorAll('#options > div');
   for (let option of options) {
-    let slider = option.querySelector('input');
+    const slider = option.querySelector('input');
     if (slider) {
-      slider.oninput = () => forceParameterChanged(option);
+      // Display new value
       slider.onchange = () => {
-        let text = option.querySelector('.value');
+        const text = option.querySelector('.value');
         text.innerText = slider.value;
       };
+      // Recalculate force layout
+      slider.oninput = () => forceParameterChanged(option);
     }
   }
 }
 
+// Rerun the force layout when parameters are changed
 function forceParameterChanged(option) {
-  let valueText = option.querySelector('.value');
-  let value = option.querySelector('input').value;
+  const valueText = option.querySelector('.value');
   valueText.innerText = value;
+  const value = option.querySelector('input').value;
   orcha.updateForce(option.dataset.name, value);
 }
 
 function onGraphReady(data) {}
 
+// Project position in rendered view to the underlying data
 function getYear(x) {
   return Math.round(orcha._stream._streamData.xScale.invert(x));
 }
 
+/* The user can create data by interacting with the visualization.
+ * A mouseover adds an orientation line and displays the year of the mouse position.
+ * When clicking on a stream, a tag is created
+ * A slider is shown on the current stream to change its size via drag & drop
+ * Drag & drop from nowhere to nowhere to create a stream
+ * Drag & drop from a stream to a stream to create a link
+ * Drag & drop from a stream to nowhere to create a stream and connect via a link
+ * The interactions need to be added every single time the visualization updates,
+ * because new streams or labels might have been added.
+ */
 function activateInteractions() {
-  let tooltips = orcha._stream._tooltipContainer;
-  let streamCon = orcha._stream._pathContainer;
-
-  tooltips.selectAll('*').remove();
-  // add line to show current time
-  let oLine = tooltips.append('g').attr('id', 'orientationLine');
-  oLine
-    .append('line')
-    .attr('y1', orcha._stream._streamData.yScale(0))
-    .attr('y2', orcha._stream._streamData.yScale(1));
-  oLine.append('text').attr('y', orcha._stream._streamData.yScale(0));
-
-  // add second line for drag operations
-  let oLine2 = tooltips.append('g').attr('id', 'orientationLine2');
-  oLine2
-    .append('line')
-    .attr('y1', orcha._stream._streamData.yScale(0))
-    .attr('y2', orcha._stream._streamData.yScale(1));
-  oLine2.append('text').attr('y', orcha._stream._streamData.yScale(0));
-
-  orcha._stream._zoomContainer.on('mousemove', function() {
-    updateLine('orientationLine', d3.mouse(this));
-  });
-
-  let streams = streamCon
+  const tooltips = orcha._stream._tooltipContainer;
+  const streams = orcha._stream._pathContainer
     .selectAll('path.stream')
     .filter(d => d.id != 'fakeRoot');
 
-  // click on streams to create tags
+  // Clear visual clues to overwrite them
+  tooltips.selectAll('*').remove();
+
+  // Orientation lines show the current year for the cursor position
+  addOrientationLines();
+
+  // Click on stream to create tags
   streams.on('click', function(d) {
-    let coords = d3.mouse(this);
+    const coords = d3.mouse(this);
     currentTag.time = getYear(coords[0]);
     currentTag.stream = d.id;
     showPopupTag();
   });
 
-  // add size slider
-  let sizeSlider = tooltips
+  // On mouseover show a box to drag & drop the stream size at that position
+  addSizeSlider();
+  streams.on('mouseenter', function(d) {
+    if (sizeSliderDrag.active) return;
+    showSizeSlider();
+  });
+  // streams.on('mouseout', function(d) {
+  //   if (sizeSliderDrag.active) return;
+  //   hideSizeSlider();
+  // });
+
+  // Change position of slider on mousemove
+  streams.on('mousemove', function(d) {
+    if (sizeSliderDrag.active) return;
+    let coords = d3.mouse(this);
+    moveSizeSlider(coords[0], d.id);
+  });
+
+  // Drag anywhere to create streams and links
+  orcha._stream._zoomContainer.call(
+    d3
+      .drag()
+      .on('start', onStreamDragStarted)
+      .on('drag', onStreamDragged)
+      .on('end', onStreamDragEnded)
+  );
+}
+
+function addOrientationLines() {
+  const tooltips = orcha._stream._tooltipContainer;
+  const yScaleTop = orcha._stream._streamData.yScale(0);
+  const yScaleBottom = orcha._stream._streamData.yScale(1);
+
+  // Add line to show the current time
+  // This line will stay in place when starting a drag & drop operation
+  const oLine = tooltips.append('g').attr('id', 'orientationLine');
+  oLine
+    .append('line')
+    .attr('y1', yScaleTop)
+    .attr('y2', yScaleBottom);
+  oLine.append('text').attr('y', yScaleTop);
+
+  // Add a line at the current mouse position during a drag & drop operation
+  const oLine2 = tooltips.append('g').attr('id', 'orientationLine2');
+  oLine2
+    .append('line')
+    .attr('y1', yScaleTop)
+    .attr('y2', yScaleBottom);
+  oLine2.append('text').attr('y', yScaleTop);
+
+  // Move line when mouse moves
+  orcha._stream._zoomContainer.on('mousemove', function() {
+    updateOrientationLine('orientationLine', d3.mouse(this));
+  });
+}
+
+function addSizeSlider() {
+  const tooltips = orcha._stream._tooltipContainer;
+  const sizeSlider = tooltips
     .append('g')
     .attr('id', 'sizeSlider')
     .call(
@@ -180,51 +237,30 @@ function activateInteractions() {
     .append('text')
     .attr('x', sizeSliderWidth / 2)
     .attr('y', 2);
-
-  streams.on('mouseenter', function(d) {
-    if (sizeSliderDrag.active) return;
-    showSizeSlider();
-  });
-
-  // streams.on('mouseout', function(d) {
-  //   if (sizeSliderDrag.active) return;
-  //   hideSizeSlider();
-  // });
-
-  streams.on('mousemove', function(d) {
-    if (sizeSliderDrag.active) return;
-    let coords = d3.mouse(this);
-    moveSizeSlider(coords[0], d.id);
-  });
-
-  // drag anywhere to create streams and links
-  orcha._stream._zoomContainer.call(
-    d3
-      .drag()
-      .on('start', onStreamDragStarted)
-      .on('drag', onStreamDragged)
-      .on('end', onStreamDragEnded)
-  );
 }
 
 function showSizeSlider() {
-  let sizeSlider = orcha._stream._tooltipContainer.select('#sizeSlider');
+  const sizeSlider = orcha._stream._tooltipContainer.select('#sizeSlider');
   sizeSlider.attr('visibility', 'visible');
 }
 
 function hideSizeSlider() {
-  let sizeSlider = orcha._stream._tooltipContainer.select('#sizeSlider');
+  const sizeSlider = orcha._stream._tooltipContainer.select('#sizeSlider');
   sizeSlider.attr('visibility', 'hidden');
 }
 
 function moveSizeSlider(x, streamId) {
-  let sizeSlider = orcha._stream._tooltipContainer.select('#sizeSlider');
-  let year = getYear(x);
-  let stream = orcha._stream.data().timesteps[year].references[streamId];
+  const sizeSlider = orcha._stream._tooltipContainer.select('#sizeSlider');
+  const year = getYear(x);
+  const stream = orcha._stream.data().timesteps[year].references[streamId];
+
+  // Align the slider center with the current mouse position
   x -= sizeSliderWidth / 2;
-  let y = orcha._stream._streamData.yScale(stream.y0) - sizeSliderHeight;
+  // Display the slider right outside the top border of the stream
+  const y = orcha._stream._streamData.yScale(stream.y0) - sizeSliderHeight;
   sizeSlider.attr('transform', 'translate(' + x + ',' + y + ')');
 
+  // Store the attributes for when the slider is dropped
   sizeSliderDrag.year = year;
   sizeSliderDrag.stream = streamId;
   sizeSliderDrag.x = x;
@@ -234,12 +270,13 @@ function moveSizeSlider(x, streamId) {
   setSizeSliderValue(sizeSliderDrag.size);
 }
 
+// Display the current size of the stream
 function setSizeSliderValue(value) {
   let sizeSlider = orcha._stream._tooltipContainer.select('#sizeSlider');
   sizeSlider.select('text').html('&#x2191;' + Math.round(value));
 }
 
-function updateLine(id, coords) {
+function updateOrientationLine(id, coords) {
   let line = d3.select('#' + id);
   let diffX = coords[0] > lastCursorCoords[0] ? -2 : 2;
   line.attr('transform', d => 'translate(' + (coords[0] + diffX) + ',0)');
@@ -275,6 +312,7 @@ function updateInteractionLine(coords) {
   }
 }
 
+// Define interaction to change stream sizes
 function onSizeSliderDragStarted() {
   sizeSliderDrag.active = true;
   let coords = d3.mouse(this);
@@ -327,14 +365,14 @@ function onStreamDragStarted() {
   else currentDrag.color = stream.getAttribute('fill');
 
   addInteractionLine(coords);
-  updateLine('orientationLine2', coords);
+  updateOrientationLine('orientationLine2', coords);
   d3.select('#orientationLine2').style('visibility', 'visible');
 }
 
 function onStreamDragged(d) {
   let coords = d3.mouse(this);
   updateInteractionLine(coords);
-  updateLine('orientationLine2', coords);
+  updateOrientationLine('orientationLine2', coords);
 }
 
 function onStreamDragEnded() {
