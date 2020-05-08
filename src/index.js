@@ -115,8 +115,8 @@ function setupOptions() {
 // Rerun the force layout when parameters are changed
 function forceParameterChanged(option) {
   const valueText = option.querySelector('.value');
-  valueText.innerText = value;
   const value = option.querySelector('input').value;
+  valueText.innerText = value;
   orcha.updateForce(option.dataset.name, value);
 }
 
