@@ -3,7 +3,7 @@
  */
 import * as d3 from 'd3';
 
-const XSCALE = 1000;
+const XSCALE = 1000; // must be the same as the fx parameter in MyForce.js
 const NODEWIDTH = 0.65 * XSCALE;
 
 export default class MyGraph {

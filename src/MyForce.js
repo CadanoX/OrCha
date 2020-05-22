@@ -10,14 +10,28 @@ export default class MyForce {
       callbackTick: () => {},
       callbackEnd: () => {},
       range: [undefined, undefined],
+      alphaDecay: 0,
+      velocityDecay: 0,
+      forceY: 0.001,
+      forceYValue: 0,
+      forceBody: -0.3,
+      forceCollision: 0.003,
+      forceStream: 1,
+      forceStreamIterations: 20,
+      forceStreamDistance: 0,
+      forceLink: 0.5,
+      forceLinkIterations: 1,
+      forceLinkDistance: 0,
+      forceTag: 0.2,
+      forceTagIterations: 1,
+      forceTagDistance: 30,
       ...opts // overwrite default settings with user settings
     };
 
     this._sim = d3.forceSimulation();
+    this._initForces();
     // this._sim.stop();
     // this._sim.alpha(0);
-    this._sim.velocityDecay(0.15); // default 0.4
-    this._sim.alphaDecay(0.07); // default 0.028
     this._sim.on('tick', () => this._tick());
     if (this._opts.callbackEnd) this._sim.on('end', this._opts.callbackEnd);
   }
@@ -28,133 +42,170 @@ export default class MyForce {
 
   set range(range) {
     this._opts.range = range;
-  }
-
-  set velocityDecay(value) {
-    this._sim.velocityDecay(value);
+    this._sim.force('forceBody').distanceMax(range[1]);
   }
   set alphaDecay(value) {
+    this._opts.alphaDecay = value;
     this._sim.alphaDecay(value);
   }
-  set forceYValue(value) {
-    this._sim.force('forceY').y(value);
+  set velocityDecay(value) {
+    this._opts.velocityDecay = value;
+    this._sim.velocityDecay(value);
   }
   set forceY(value) {
+    this._opts.forceYValue = value;
     this._sim.force('forceY').strength(value);
   }
+  set forceYValue(value) {
+    this._opts.forceYValue = value;
+    this._sim.force('forceY').y(value);
+  }
   set forceBody(value) {
+    this._opts.forceBody = value;
     this._sim.force('forceBody').strength(value);
   }
   set forceCollision(value) {
+    this._opts.forceCollision = value;
     this._sim.force('forceCollision').strength(value);
   }
-  set forceCrossing(value) {
-    this._sim.force('forceCrossing').strength(value);
+  set streamForce(value) {
+    this._opts.forceStream = value;
+    this._sim.force('forceStream').strength(value);
   }
-  set forceCrossingMinDistance(value) {
-    this._sim.force('forceCrossing').distanceMin(value);
+  set streamIterations(value) {
+    this._opts.forceStreamIterations = value;
+    this._sim.force('forceStream').iterations(value);
   }
-  set forceCrossingMaxDistance(value) {
-    this._sim.force('forceCrossing').distanceMax(value);
-  }
-  set linkForceStream(value) {
-    this._sim.force('forceLinkStream').strength(value);
-  }
-  set linkIterationsStream(value) {
-    this._sim.force('forceLinkStream').iterations(value);
-  }
-  set linkDistanceStream(value) {
-    this._sim.force('forceLinkStream').distance(value);
-  }
-  set linkForcePort(value) {
-    this._sim.force('forceTag').strength(value);
-  }
-  set linkIterationsPort(value) {
-    this._sim.force('forceTag').iterations(value);
-  }
-  set linkDistancePort(value) {
-    this._sim.force('forceTag').distance(value);
+  set streamDistance(value) {
+    this._opts.forceStreamDistance = value;
+    this._sim.force('forceStream').distance(value);
   }
   set linkForce(value) {
+    this._opts.forceLink = value;
     this._sim.force('forceLink').strength(value);
   }
   set linkIterations(value) {
+    this._opts.forceLinkIterations = value;
     this._sim.force('forceLink').iterations(value);
   }
   set linkDistance(value) {
+    this._opts.forceLinkDistance = value;
     this._sim.force('forceLink').distance(value);
   }
+  set tagForce(value) {
+    this._opts.forceTag = value;
+    this._sim.force('forceTag').strength(value);
+  }
+  set tagIterations(value) {
+    this._opts.forceTagIterations = value;
+    this._sim.force('forceTag').iterations(value);
+  }
+  set tagDistance(value) {
+    this._opts.forceTagDistance = value;
+    this._sim.force('forceTag').distance(value);
+  }
 
-  _setData(data) {
-    // preprocess
-    data.nodes.forEach(d => {
-      // fix nodes in x direction
-      d.fx = +d.time * 1000;
-      // d.fy = d.pos;
-    });
-    //set
-    this._data = data;
-    this._sim.nodes(this._data.nodes);
-    this._sim.force(
-      'forceY',
-      d3.forceY(this._opts.range[1] / 2).strength(0.001)
-    );
+  _initForces() {
+    let {
+      range,
+      alphaDecay,
+      velocityDecay,
+      forceY,
+      forceYValue,
+      forceBody,
+      forceCollision,
+      forceStream,
+      forceStreamIterations,
+      forceStreamDistance,
+      forceTag,
+      forceTagIterations,
+      forceTagDistance,
+      forceLink,
+      forceLinkIterations,
+      forceLinkDistance
+    } = this._opts;
+
+    this._sim.alphaDecay(alphaDecay);
+    this._sim.velocityDecay(velocityDecay);
+    this._sim.force('forceY', d3.forceY(forceYValue).strength(forceY));
+
     this._sim.force(
       'forceBody',
       d3
         .forceManyBody()
-        .strength(-0.3)
-        .distanceMax(this._opts.range[1])
+        .strength(forceBody)
+        .distanceMax(range[1])
     );
-    // this._sim.force('forceCrossing', d3.forceManyBody().strength(0));
+
     this._sim.force(
       'forceCollision',
       d3
         .forceCollide()
-        .radius(d => d.height)
-        .strength(0.003) // default 0.7
+        .radius(d => d.height / 2)
+        .strength(forceCollision)
     );
 
     this._sim.force(
-      'forceLinkStream',
+      'forceStream',
       d3
-        .forceLink(data.links.filter(d => d.type == 'stream'))
+        .forceLink()
         .id(d => d.id)
-        .strength(1)
-        .iterations(20)
-        .distance(0)
+        .strength(forceStream)
+        .iterations(forceStreamIterations)
+        .distance(forceStreamDistance)
     );
+
     this._sim.force(
       'forceLink',
       d3
-        .forceLink(data.links.filter(d => d.type == 'link'))
+        .forceLink()
         .id(d => d.id)
-        .strength(0.5)
-        .iterations(1)
-        .distance(0)
+        .strength(forceLink)
+        .iterations(forceLinkIterations)
+        .distance(forceLinkDistance)
     );
 
     this._sim.force(
       'forceTag',
       d3
-        .forceLink(data.links.filter(d => d.type == 'tag'))
+        .forceLink()
         .id(d => d.id)
-        .strength(0.2)
-        .iterations(1)
-        .distance(30)
+        .strength(forceTag)
+        .iterations(forceTagIterations)
+        .distance(forceTagDistance)
     );
 
-    this._sim.force(
-      'forcePort',
-      d3
-        .forceLink(
-          data.links.filter(d => !d.id.includes('tag') && d.id.includes('port'))
-        )
-        .id(d => d.id)
-        .strength(1)
-        .iterations(20)
-        .distance(0)
-    );
+    // this._sim.force(
+    //   "forcePort",
+    //   d3
+    //     .forceLink(
+    //       data.links.filter(
+    //         (d) => !d.id.includes("tag") && d.id.includes("port")
+    //       )
+    //     )
+    //     .id((d) => d.id)
+    //     .strength(1)
+    //     .iterations(20)
+    //     .distance(0)
+    // );
+  }
+
+  _setData(data) {
+    // Fix node positions in x direction
+    data.nodes.forEach(d => {
+      d.fx = +d.time * 1000;
+    });
+
+    //set
+    this._data = data;
+    this._sim.nodes(this._data.nodes);
+    this._sim
+      .force('forceStream')
+      .links(data.links.filter(d => d.type == 'stream'));
+    this._sim
+      .force('forceLink')
+      .links(data.links.filter(d => d.type == 'link'));
+    this._sim.force('forceTag').links(data.links.filter(d => d.type == 'tag'));
   }
 
   _tick() {
@@ -162,13 +213,18 @@ export default class MyForce {
     let extraSpace = 0.2;
     this._data.nodes.forEach(function(d) {
       // keep nodes in window bounds
-      if (range[0])
-        d.x = Math.max(d.width / 2, Math.min(range[0] - d.width / 2, d.x));
-      if (range[1])
-        d.y = Math.max(
-          d.height / 2 + extraSpace,
-          Math.min(range[1] - d.height / 2 - extraSpace, d.y)
-        );
+      if (range[0]) {
+        const lowerEnd = d.width / 2;
+        const upperEnd = range[0] - d.width / 2;
+        if (d.x < lowerEnd) d.x = lowerEnd;
+        else if (d.x > upperEnd) d.x = upperEnd;
+      }
+      if (range[1]) {
+        const lowerEnd = d.height / 2 + extraSpace;
+        const upperEnd = range[1] - d.height / 2 - extraSpace;
+        if (d.y < lowerEnd) d.y = lowerEnd;
+        else if (d.y > upperEnd) d.y = upperEnd;
+      }
 
       // force nodes back into their parent elements
       // TODO: this is super inefficient. store data in an object with IDs instead

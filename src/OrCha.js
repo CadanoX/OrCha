@@ -82,7 +82,7 @@ export default class OrCha {
     this._graphLayout.data(this._graphData);
     // move nodes to the middle of the div
     this._graphLayout.forceYValue = this._stream._maxValue / 2;
-    this._graphLayout.range = [0, this._rootSize];
+    this._graphLayout.range = [0, this._stream._maxValue];
     this._graphLayout.run();
 
     this._makeFancyTimeline();
@@ -248,11 +248,11 @@ export default class OrCha {
         // For the graph we need enumerate them by adding the iterator to the ID
         let parent =
           node.parent && node.parent.id != 'fakeRoot'
-            ? node.parent.id + i
+            ? node.parent.id + '-' + i
             : undefined;
 
         nodes.push({
-          id: node.id + i, // add iterator to distinguish nodes of a stream
+          id: node.id + '-' + i, // add iterator to distinguish nodes of a stream
           name: node.id,
           time: i, // normalize time
           parent, // for nested collision detections
@@ -284,9 +284,9 @@ export default class OrCha {
             else if (prev.id == node.id) type = 'stream';
             else type = 'link';
             links.push({
-              id: prev.id + (i - 1) + node.id + i,
-              source: prev.id + (i - 1),
-              target: node.id + i,
+              id: prev.id + '-' + (i - 1) + node.id + '-' + i,
+              source: prev.id + '-' + (i - 1),
+              target: node.id + '-' + i,
               type
             });
           }
