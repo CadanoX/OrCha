@@ -24,14 +24,18 @@ export default class OrCha {
   constructor(streamContainer, graphContainer, readyFunction) {
     this._streamContainer = streamContainer;
     this._callback = readyFunction;
-    this.stream;
+    this._stream;
     this._rootSize = 200;
     this._streamSize = 1;
     this._fontSize = 7;
     this._mergePositions = []; // stores nodes with times when they merge into other streams
 
     this._initStream();
-    if (graphContainer) this._graph = new MyGraph(graphContainer);
+    if (graphContainer)
+      this._graph = new MyGraph(graphContainer, {
+        margin: { top: 40, bottom: 20, left: 20, right: 20 }
+        // margin: { top: 0, bottom: 0, left: 0, right: 0 }
+      });
 
     this._stream._svg.attr('font-size', this._fontSize + 'px');
   }
@@ -60,8 +64,8 @@ export default class OrCha {
     this._applyNodePositionsToStream();
 
     // Increase the free space between nodes
-    //this._multiplyRootSize(2);
-    this._setRootSize(this._rootSize);
+    this._multiplyRootSize(2);
+    // this._setRootSize(this._rootSize);
 
     // this._drawSpaceHeight = document
     //   .querySelector('svg > .zoom')
@@ -78,7 +82,7 @@ export default class OrCha {
     this._graphLayout.data(this._graphData);
     // move nodes to the middle of the div
     this._graphLayout.forceYValue = this._stream._maxValue / 2;
-    this._graphLayout.range = [undefined, this._rootSize];
+    this._graphLayout.range = [0, this._rootSize];
     this._graphLayout.run();
 
     this._makeFancyTimeline();
@@ -86,9 +90,9 @@ export default class OrCha {
 
   _initStream() {
     this._stream = new SplitStream(this._streamContainer, {
-      mirror: true,
+      mirror: true, // show first added streams at the top
       showLabels: true,
-      offset: 'zero',
+      offset: 'zero', // show stacked streams before force layout starts for debug reasons
       transparentRoot: true,
       // yPadding: 1,
       axes: [
@@ -119,6 +123,11 @@ export default class OrCha {
     let ticks = axes.selectAll('.tick line');
     let tick1 = ticks._groups[0][0];
     let tick2 = ticks._groups[0][1];
+
+    // When there are no streams, do not draw a background
+    // TODO: instead always draw a minimmum timelines
+    if (!tick1) return;
+
     let height = tick1.getBBox().height;
     let x1 = tick1.parentNode.transform.baseVal[0].matrix.e;
     let x2 = tick2.parentNode.transform.baseVal[0].matrix.e;
@@ -153,6 +162,7 @@ export default class OrCha {
   // Change the input data (streams, links, labels) to the SplitStreams format
   _inputToStreamData(d) {
     this._streamData = new SplitStreamInputData({
+      forceFakeRoot: true, // make empty space work for only 1 stream
       order: null
       // order: {
       //   name: 'minimizeEdgeCrossings',
@@ -233,26 +243,25 @@ export default class OrCha {
       for (let id in t.references) {
         let node = t.references[id];
         if (node.id == 'fakeRoot') continue;
+
+        // Streams have the same node ID in every timestep
+        // For the graph we need enumerate them by adding the iterator to the ID
         let parent =
           node.parent && node.parent.id != 'fakeRoot'
             ? node.parent.id + i
             : undefined;
 
         nodes.push({
-          id: node.id + i,
+          id: node.id + i, // add iterator to distinguish nodes of a stream
           name: node.id,
-          time: i,
-          pos: node.pos,
-          parent,
-          depth: node.depth,
-          height: node.size,
-          // height: 50,
-          width: (node.id + i).split('').length * 10,
+          time: i, // normalize time
+          parent, // for nested collision detections
+          height: node.size, // for collision detections
           color: node.data ? node.data.color : 'orange',
-          x: (i - 1890) * 20,
-          y: node.pos
+          y: node.pos // more likely to keep the original order
         });
 
+        // Distinguish between different types of links
         if (node.prev) {
           for (let prev of node.prev) {
             //find locations at which streams merge
@@ -313,9 +322,11 @@ export default class OrCha {
     // TODO: possibly this is not a unique name
     link.name = link.from + link.to;
 
-    let streamNode = this._streamData._timesteps[link.start].references[
-      link.from
-    ];
+    let timestep = this._streamData._timesteps[link.start];
+    let streamNode = timestep ? timestep.references[link.from] : undefined;
+
+    if (!streamNode) return;
+
     let color = streamNode ? streamNode.data.color : 'orange';
 
     let last = link.from;
@@ -544,12 +555,12 @@ export default class OrCha {
 
   _multiplyRootSize(value) {
     let times = this._streamData._timesteps;
-    for (let t in times) times[t].tree.dataSize *= value;
+    for (const t of Object.keys(times)) times[t].tree.dataSize *= value;
   }
 
   _setRootSize(value) {
     let times = this._streamData._timesteps;
-    for (let t in times) times[t].tree.dataSize = value;
+    for (const t of Object.keys(times)) times[t].tree.dataSize = value;
   }
 
   _onForceEnd() {

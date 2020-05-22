@@ -253,6 +253,7 @@ function moveSizeSlider(x, streamId) {
   const sizeSlider = orcha._stream._tooltipContainer.select('#sizeSlider');
   const year = getYear(x);
   const stream = orcha._stream.data().timesteps[year].references[streamId];
+  if (!stream) return;
 
   // Align the slider center with the current mouse position
   x -= sizeSliderWidth / 2;
