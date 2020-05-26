@@ -69,14 +69,11 @@ export default class MyGraph {
     // add stream nodes
     this._nodes
       .selectAll('rect')
-      .data(d.nodes, d => d.id)
+      .data(d.streamNodes, d => d.id)
       .join(
         enter =>
           enter
             .append('rect')
-            .filter(
-              d => !d.name.startsWith('labeltag') && !d.name.startsWith('tag')
-            )
             .attr('width', x(NODEWIDTH) - x(0))
             .attr('height', d => y(d.height) - y(0))
             .attr('x', d => x(d.x - NODEWIDTH / 2))
@@ -96,22 +93,21 @@ export default class MyGraph {
     // add label nodes
     this._nodes
       .selectAll('ellipse')
-      .data(d.nodes, d => d.id)
+      .data(d.labelNodes, d => d.id)
       .join(
         enter =>
           enter
             .append('ellipse')
-            .filter(d => d.name.startsWith('tag'))
-            .attr('rx', x(NODEWIDTH / 2) - x(0))
-            .attr('ry', x(NODEWIDTH / 2) - x(0))
+            .attr('rx', d => y(d.height / 2) - y(0))
+            .attr('ry', d => y(d.height / 2) - y(0))
             .attr('cx', d => x(d.x))
             .attr('cy', d => y(d.y))
             .attr('fill', d => (d.color == 'transparent' ? '#AAA' : d.color))
             .attr('stroke', 'black'),
         update =>
           update
-            .attr('rx', x(NODEWIDTH / 2) - x(0))
-            .attr('ry', x(NODEWIDTH / 2) - x(0))
+            .attr('rx', d => y(d.height / 2) - y(0))
+            .attr('ry', d => y(d.height / 2) - y(0))
             .attr('cx', d => x(d.x))
             .attr('cy', d => y(d.y))
             .attr('fill', d => (d.color == 'transparent' ? '#AAA' : d.color)),

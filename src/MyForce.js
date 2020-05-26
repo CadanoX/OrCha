@@ -196,16 +196,13 @@ export default class MyForce {
       d.fx = +d.time * 1000;
     });
 
-    //set
     this._data = data;
+
+    //set
     this._sim.nodes(this._data.nodes);
-    this._sim
-      .force('forceStream')
-      .links(data.links.filter(d => d.type == 'stream'));
-    this._sim
-      .force('forceLink')
-      .links(data.links.filter(d => d.type == 'link'));
-    this._sim.force('forceTag').links(data.links.filter(d => d.type == 'tag'));
+    this._sim.force('forceStream').links(this._data.streamLinks);
+    this._sim.force('forceLink').links(this._data.linkLinks);
+    this._sim.force('forceTag').links(this._data.tagLinks);
   }
 
   _tick() {

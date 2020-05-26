@@ -223,9 +223,7 @@ export default class OrCha {
 
     // draw inner tags after streams to position them as children
     for (let tag of innerTags) this._addTagNode(tag);
-
     for (let link of d.links) this._addLinks(link);
-
     this._streamData.connectEqualIds();
     this._streamData.finalize();
 
@@ -236,65 +234,88 @@ export default class OrCha {
   // create links based on their previous node references
   _streamDataToGraph(data) {
     this._mergePositions = [];
-    let nodes = [];
-    let links = [];
+    let graph = {
+      nodes: [],
+      streamNodes: [],
+      labelNodes: [],
+      links: [],
+      streamLinks: [], // between stream nodes
+      labelLinks: [], // from stream to label
+      tagLinks: [], // between label nodes
+      linkLinks: [] // connecting anything
+    };
+
+    let assignNode = (node, i) => {
+      // Streams have the same node ID in every timestep
+      // For the graph we need enumerate them by adding the iterator to the ID
+      let parent =
+        node.parent && node.parent.id != 'fakeRoot'
+          ? node.parent.id + '-' + i
+          : undefined;
+
+      let graphNode = {
+        id: node.id + '-' + i, // add iterator to distinguish nodes of a stream
+        name: node.id,
+        time: i, // normalize time
+        parent, // for nested collision detections
+        height: node.size, // for collision detections
+        color: node.data ? node.data.color : 'orange',
+        y: node.pos // more likely to keep the original order
+      };
+
+      graph.nodes.push(graphNode);
+      if (node.id.startsWith('tag')) graph.labelNodes.push(graphNode);
+      else graph.streamNodes.push(graphNode);
+    };
+
+    let assignLink = (node, i) => {
+      if (node.prev) {
+        // Distinguish between different types of links
+        for (let prev of node.prev) {
+          //find locations at which streams merge
+          if (prev.id != node.id && node.id)
+            this._mergePositions.push({
+              node,
+              time: i,
+              prev
+            });
+
+          let link = {
+            id: prev.id + '-' + (i - 1) + node.id + '-' + i,
+            source: prev.id + '-' + (i - 1),
+            target: node.id + '-' + i
+          };
+
+          graph.links.push(link);
+          // long ditance link
+          if (node.data && node.data.edgeType == 'link')
+            graph.linkLinks.push(link);
+          // labels
+          else if (node.data && node.data.edgeType == 'label')
+            graph.labelLinks.push(link);
+          // tags
+          else if (!prev.id.startsWith('tag') && node.id.startsWith('tag'))
+            graph.tagLinks.push(link);
+          // same stream
+          else if (prev.id == node.id) graph.streamLinks.push(link);
+          else graph.linkLinks.push(link);
+        }
+      }
+    };
+
     for (let i in data._timesteps) {
       let t = data._timesteps[i];
       for (let id in t.references) {
         let node = t.references[id];
         if (node.id == 'fakeRoot') continue;
 
-        // Streams have the same node ID in every timestep
-        // For the graph we need enumerate them by adding the iterator to the ID
-        let parent =
-          node.parent && node.parent.id != 'fakeRoot'
-            ? node.parent.id + '-' + i
-            : undefined;
-
-        nodes.push({
-          id: node.id + '-' + i, // add iterator to distinguish nodes of a stream
-          name: node.id,
-          time: i, // normalize time
-          parent, // for nested collision detections
-          height: node.size, // for collision detections
-          color: node.data ? node.data.color : 'orange',
-          y: node.pos // more likely to keep the original order
-        });
-
-        // Distinguish between different types of links
-        if (node.prev) {
-          for (let prev of node.prev) {
-            //find locations at which streams merge
-            if (prev.id != node.id && node.id)
-              this._mergePositions.push({
-                node: node,
-                time: i,
-                prev: prev
-              });
-
-            let type;
-            // long ditance link
-            if (node.data && node.data.edgeType == 'link') type = 'link';
-            // labels
-            else if (node.data && node.data.edgeType == 'label') type = 'label';
-            // tags
-            else if (!prev.id.startsWith('tag') && node.id.startsWith('tag'))
-              type = 'tag';
-            // same stream
-            else if (prev.id == node.id) type = 'stream';
-            else type = 'link';
-            links.push({
-              id: prev.id + '-' + (i - 1) + node.id + '-' + i,
-              source: prev.id + '-' + (i - 1),
-              target: node.id + '-' + i,
-              type
-            });
-          }
-        }
+        assignNode(node, i);
+        assignLink(node, i);
       }
     }
+
     // randomize(nodes);
-    return { nodes, links };
+    return graph;
   }
 
   _addStream(stream) {
