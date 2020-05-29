@@ -181,6 +181,8 @@ export default class OrCha {
           stream.color = this.__getDarkerColor(parent.color);
       }
       streamColors[stream.name] = stream.color;
+      stream.start = +stream.start;
+      stream.end = +stream.end;
     });
 
     // randomly position tags above or below their corresponding stream
@@ -223,7 +225,11 @@ export default class OrCha {
 
     // draw inner tags after streams to position them as children
     for (let tag of innerTags) this._addTagNode(tag);
-    for (let link of d.links) this._addLinks(link);
+    for (let link of d.links) {
+      link.start = +link.start;
+      link.end = +link.end;
+      this._addLinks(link);
+    }
     this._streamData.connectEqualIds();
     this._streamData.finalize();
 
@@ -238,6 +244,7 @@ export default class OrCha {
       nodes: [],
       streamNodes: [],
       labelNodes: [],
+      linkNodes: [],
       links: [],
       streamLinks: [], // between stream nodes
       labelLinks: [], // from stream to label
@@ -260,11 +267,13 @@ export default class OrCha {
         parent, // for nested collision detections
         height: node.size, // for collision detections
         color: node.data ? node.data.color : 'orange',
-        y: node.pos // more likely to keep the original order
+        y: node.pos, // more likely to keep the original order
+        type: node.data.edgeType
       };
 
       graph.nodes.push(graphNode);
       if (node.id.startsWith('tag')) graph.labelNodes.push(graphNode);
+      if (node.data.edgeType == 'link') graph.linkNodes.push(graphNode);
       else graph.streamNodes.push(graphNode);
     };
 
@@ -478,14 +487,6 @@ export default class OrCha {
     return smallerValue + prop * (biggerValue - smallerValue);
   }
 
-  _onForceUpdate() {
-    // draw graph with new positions
-    if (this._graph) this._graph.data(this._graphData);
-    // draw stream with new positions
-    this._applyNodePositionsToStream();
-    // this._hideMergePositions();
-  }
-
   _applyNodePositionsToStream() {
     if (!this._graphData) return;
 
@@ -582,6 +583,14 @@ export default class OrCha {
   _setRootSize(value) {
     let times = this._streamData._timesteps;
     for (const t of Object.keys(times)) times[t].tree.dataSize = value;
+  }
+
+  _onForceUpdate() {
+    // draw graph with new positions
+    if (this._graph) this._graph.data(this._graphData);
+    // draw stream with new positions
+    this._applyNodePositionsToStream();
+    // this._hideMergePositions();
   }
 
   _onForceEnd() {
