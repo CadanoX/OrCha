@@ -4,6 +4,8 @@
 
 import * as d3 from 'd3';
 
+const XSCALE = 1000; // must be the same as XSCALE in MyGraph.js
+
 export default class MyForce {
   constructor(opts = {}) {
     this._opts = {
@@ -24,7 +26,7 @@ export default class MyForce {
       forceLinkDistance: 0,
       forceTag: 0.2,
       forceTagIterations: 1,
-      forceTagDistance: 30,
+      forceTagDistance: 0,
       ...opts // overwrite default settings with user settings
     };
 
@@ -62,7 +64,7 @@ export default class MyForce {
   }
   set forceBody(value) {
     this._opts.forceBody = value;
-    this._sim.force('forceBody').strength(value);
+    this._sim.force('forceBody').strength(d => d.height * this._opts.forceBody);
   }
   set forceCollision(value) {
     this._opts.forceCollision = value;
@@ -77,8 +79,8 @@ export default class MyForce {
     this._sim.force('forceStream').iterations(value);
   }
   set streamDistance(value) {
-    this._opts.forceStreamDistance = value;
-    this._sim.force('forceStream').distance(value);
+    this._opts.forceStreamDistance = value * XSCALE;
+    this._sim.force('forceStream').distance(this._opts.forceStreamDistance);
   }
   set linkForce(value) {
     this._opts.forceLink = value;
@@ -89,8 +91,8 @@ export default class MyForce {
     this._sim.force('forceLink').iterations(value);
   }
   set linkDistance(value) {
-    this._opts.forceLinkDistance = value;
-    this._sim.force('forceLink').distance(value);
+    this._opts.forceLinkDistance = value * XSCALE;
+    this._sim.force('forceLink').distance(this._opts.forceLinkDistance);
   }
   set tagForce(value) {
     this._opts.forceTag = value;
@@ -101,8 +103,8 @@ export default class MyForce {
     this._sim.force('forceTag').iterations(value);
   }
   set tagDistance(value) {
-    this._opts.forceTagDistance = value;
-    this._sim.force('forceTag').distance(value);
+    this._opts.forceTagDistance = value * XSCALE;
+    this._sim.force('forceTag').distance(this._opts.forceTagDistance);
   }
 
   _initForces() {
@@ -133,7 +135,7 @@ export default class MyForce {
       'forceBody',
       d3
         .forceManyBody()
-        .strength(forceBody)
+        .strength(d => d.height * forceBody)
         .distanceMax(range[1])
     );
 
@@ -152,7 +154,7 @@ export default class MyForce {
         .id(d => d.id)
         .strength(forceStream)
         .iterations(forceStreamIterations)
-        .distance(forceStreamDistance)
+        .distance(forceStreamDistance * XSCALE)
     );
 
     this._sim.force(
@@ -162,7 +164,7 @@ export default class MyForce {
         .id(d => d.id)
         .strength(forceLink)
         .iterations(forceLinkIterations)
-        .distance(forceLinkDistance)
+        .distance(forceLinkDistance * XSCALE)
     );
 
     this._sim.force(
@@ -172,7 +174,7 @@ export default class MyForce {
         .id(d => d.id)
         .strength(forceTag)
         .iterations(forceTagIterations)
-        .distance(forceTagDistance)
+        .distance(forceTagDistance * XSCALE)
     );
 
     // this._sim.force(
@@ -193,13 +195,17 @@ export default class MyForce {
   _setData(data) {
     // Fix node positions in x direction
     data.nodes.forEach(d => {
-      d.fx = +d.time * 1000;
+      d.fx = +d.time * XSCALE;
     });
 
     this._data = data;
 
     //set
     this._sim.nodes(this._data.nodes);
+
+    // apply n-body force to stream nodes only
+    this._isolate(this._sim.force('forceBody'), node => node.type != 'link');
+
     this._sim.force('forceStream').links(this._data.streamLinks);
     this._sim.force('forceLink').links(this._data.linkLinks);
     this._sim.force('forceTag').links(this._data.tagLinks);
@@ -241,5 +247,15 @@ export default class MyForce {
   run(ticks = 0) {
     if (ticks > 0) this._sim.tick(ticks);
     else this._sim.alpha(1).restart();
+  }
+
+  // apply forces to only a subset of nodes
+  // copied form https://bl.ocks.org/mbostock/b1f0ee970299756bc12d60aedf53c13b
+  _isolate(force, filter) {
+    const initialize = force.initialize;
+    force.initialize = () => {
+      initialize.call(force, this._data.nodes.filter(filter));
+    };
+    return force;
   }
 }
