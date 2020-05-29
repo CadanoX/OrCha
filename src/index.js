@@ -101,6 +101,8 @@ function setupOptions() {
   for (let option of options) {
     const slider = option.querySelector('input');
     if (slider) {
+      // Initiate the force layout with the selected parameters
+      forceParameterChanged(option);
       // Display new value
       slider.onchange = () => {
         const text = option.querySelector('.value');
